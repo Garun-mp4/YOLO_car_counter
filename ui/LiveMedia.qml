@@ -24,6 +24,7 @@ Item {
             fillMode: Image.PreserveAspectFit
             cache: false
             asynchronous: true
+            retainWhileLoading: true
         }
 
         ColumnLayout {

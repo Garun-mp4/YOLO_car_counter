@@ -22,9 +22,10 @@ modes:
 
 runtime:
   tracker: bytetrack.yaml
-  confidence: 0.25
+  # Более крупный размер помогает находить дальние машины на этом ракурсе.
+  confidence: 0.20
   iou: 0.70
-  image_size: 640
+  image_size: 960
   device: auto
 
 counting:
@@ -35,4 +36,3 @@ counting:
   start_line_y: 0.30
   finish_line_y: 0.75
   show_window: false
-

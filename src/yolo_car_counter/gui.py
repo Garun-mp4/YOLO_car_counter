@@ -6,6 +6,7 @@ import argparse
 import math
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -43,6 +44,33 @@ class FrameImageProvider(QQuickImageProvider):
         return image
 
 
+class PreviewPacer:
+    """Keep preview frames from being emitted in bursts when inference is fast."""
+
+    def __init__(self, target_fps: float = 30.0) -> None:
+        if not math.isfinite(target_fps) or target_fps <= 0:
+            raise ValueError("target_fps должен быть положительным числом")
+        self._interval = 1.0 / target_fps
+        self._next_deadline: float | None = None
+
+    def delay_for(self, now: float) -> float:
+        """Return the delay required before the next preview frame."""
+
+        if not math.isfinite(now):
+            raise ValueError("now должен быть конечным числом")
+        if self._next_deadline is None:
+            self._next_deadline = now
+
+        delay = max(0.0, self._next_deadline - now)
+        self._next_deadline += self._interval
+
+        # If inference took longer than one or more display intervals, restart
+        # from the current time instead of emitting a catch-up burst.
+        if self._next_deadline <= now:
+            self._next_deadline = now + self._interval
+        return delay
+
+
 class AnalysisWorker(QObject):
     """Run the blocking OpenCV/YOLO pipeline outside the Qt GUI thread."""
 
@@ -57,6 +85,7 @@ class AnalysisWorker(QObject):
         self.config = config
         self._stop_event = threading.Event()
         self._last_stats: tuple[int, tuple[tuple[str, int], ...]] | None = None
+        self._preview_pacer = PreviewPacer()
 
     def request_stop(self) -> None:
         """Set the stop flag; this method is safe to call from the GUI thread."""
@@ -79,6 +108,10 @@ class AnalysisWorker(QObject):
 
     def _on_frame(self, frame: Any, frame_index: int, counter: LineCrossingCounter) -> None:
         del frame_index
+        delay = self._preview_pacer.delay_for(time.monotonic())
+        if delay > 0 and self._stop_event.wait(delay):
+            return
+
         preview = frame
         frame_height, frame_width = frame.shape[:2]
         if frame_width > 1280:
