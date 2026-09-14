@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import os
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -42,6 +43,8 @@ class _AsyncVideoWriter:
     _SENTINEL = object()
 
     def __init__(self, writer: cv2.VideoWriter, capacity: int = 8) -> None:
+        if capacity < 1:
+            raise ValueError("capacity должен быть положительным")
         self._writer = writer
         self._queue: Queue[Any] = Queue(maxsize=capacity)
         self._error: BaseException | None = None
@@ -52,6 +55,8 @@ class _AsyncVideoWriter:
     def write(self, frame: Any) -> None:
         """Queue a frame while still surfacing encoder failures promptly."""
 
+        if self._closed:
+            raise RuntimeError("Нельзя записать кадр после закрытия writer-а")
         self._raise_if_failed()
         while True:
             self._raise_if_failed()
@@ -118,15 +123,25 @@ class TrafficVideoProcessor:
         if not capture.isOpened():
             raise RuntimeError(f"Не удалось открыть видео: {self.config.video}")
 
-        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = float(capture.get(cv2.CAP_PROP_FPS))
-        frame_count_hint = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        raw_width = float(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        raw_height = float(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        raw_fps = float(capture.get(cv2.CAP_PROP_FPS))
+        raw_frame_count = float(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        if not math.isfinite(raw_width) or not math.isfinite(raw_height):
+            capture.release()
+            raise RuntimeError("Не удалось определить размеры видео")
+
+        width = int(raw_width)
+        height = int(raw_height)
+        fps = raw_fps if math.isfinite(raw_fps) and raw_fps > 0 else 25.0
+        frame_count_hint = (
+            int(raw_frame_count)
+            if math.isfinite(raw_frame_count) and raw_frame_count > 0
+            else 0
+        )
         if width <= 0 or height <= 0:
             capture.release()
             raise RuntimeError("Не удалось определить размеры видео")
-        if fps <= 0:
-            fps = 25.0
 
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
         output_paths = self._output_paths()
@@ -192,6 +207,9 @@ class TrafficVideoProcessor:
             writer.close()
             if self.config.show_window:
                 cv2.destroyAllWindows()
+
+        if frame_index == 0 and not stopped_by_user:
+            raise RuntimeError("Видео не содержит читаемых кадров")
 
         counter.finalize(frame_index, frame_index / fps if fps else 0.0)
         if progress_callback is None:
@@ -326,7 +344,7 @@ class TrafficVideoProcessor:
             detections.append(
                 Detection(
                     track_id=int(track_id),
-                    class_name=self._class_names.get(int(class_id), str(class_id)),
+                    class_name=self._class_names.get(int(class_id), str(class_id)).strip().lower(),
                     confidence=float(confidence),
                     x1=float(coordinates[0]),
                     y1=float(coordinates[1]),

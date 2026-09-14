@@ -148,6 +148,7 @@ ApplicationWindow {
                         text: "Наблюдение"
                         indexLabel: "01"
                         compact: app.tablet
+                        indexOnly: app.tablet
                         active: app.currentPage === 0
                         onClicked: app.currentPage = 0
                     }
@@ -157,6 +158,7 @@ ApplicationWindow {
                         text: "Настройки"
                         indexLabel: "02"
                         compact: app.tablet
+                        indexOnly: app.tablet
                         active: app.currentPage === 1
                         onClicked: app.currentPage = 1
                     }
@@ -166,6 +168,7 @@ ApplicationWindow {
                         text: "Результаты"
                         indexLabel: "03"
                         compact: app.tablet
+                        indexOnly: app.tablet
                         active: app.currentPage === 2
                         onClicked: app.currentPage = 2
                     }
@@ -415,6 +418,7 @@ ApplicationWindow {
                                     AppButton {
                                         id: mobileOpenVideoButton
                                         Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
                                         theme: app.tokens
                                         text: app.mobile ? "Открыть" : "Открыть видео"
                                         compact: true
@@ -425,6 +429,7 @@ ApplicationWindow {
                                     AppButton {
                                         id: mobileStartButton
                                         Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
                                         theme: app.tokens
                                         text: app.mobile ? "Запустить" : "Начать анализ"
                                         compact: true
@@ -435,6 +440,7 @@ ApplicationWindow {
                                     AppButton {
                                         id: mobileStopButton
                                         Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
                                         theme: app.tokens
                                         text: "Стоп"
                                         compact: true
@@ -619,7 +625,10 @@ ApplicationWindow {
                                         color: theme.ink
                                         font.family: theme.monoFont
                                         font.pixelSize: 9
-                                        onEditingFinished: app.backendObject.setVideoPath(text)
+                                        onEditingFinished: {
+                                            app.backendObject.setVideoPath(text)
+                                            text = app.backendObject.videoPath
+                                        }
                                         background: Rectangle {
                                             radius: theme.radiusSmall
                                             color: theme.canvas
@@ -633,6 +642,13 @@ ApplicationWindow {
                                         compact: true
                                         variant: "secondary"
                                         onClicked: app.backendObject.chooseVideo()
+                                    }
+                                }
+                                Connections {
+                                    target: app.backendObject
+                                    function onVideoPathChanged() {
+                                        if (!settingsVideoField.activeFocus)
+                                            settingsVideoField.text = app.backendObject.videoPath
                                     }
                                 }
                                 Text { text: "Модель YOLO"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
@@ -649,7 +665,10 @@ ApplicationWindow {
                                         color: theme.ink
                                         font.family: theme.monoFont
                                         font.pixelSize: 9
-                                        onEditingFinished: app.backendObject.setModelPath(text)
+                                        onEditingFinished: {
+                                            app.backendObject.setModelPath(text)
+                                            text = app.backendObject.modelPath
+                                        }
                                         background: Rectangle {
                                             radius: theme.radiusSmall
                                             color: theme.canvas
@@ -663,6 +682,13 @@ ApplicationWindow {
                                         compact: true
                                         variant: "secondary"
                                         onClicked: app.backendObject.chooseModel()
+                                    }
+                                }
+                                Connections {
+                                    target: app.backendObject
+                                    function onModelPathChanged() {
+                                        if (!settingsModelField.activeFocus)
+                                            settingsModelField.text = app.backendObject.modelPath
                                     }
                                 }
                             }

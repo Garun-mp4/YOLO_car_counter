@@ -8,6 +8,7 @@ Button {
     property var theme
     property bool active: false
     property bool compact: false
+    property bool indexOnly: false
     property string indexLabel: "01"
 
     implicitHeight: 40
@@ -17,6 +18,9 @@ Button {
     leftPadding: compact ? 4 : 12
     rightPadding: compact ? 4 : 12
     Accessible.name: control.text
+    ToolTip.visible: control.indexOnly && control.hovered
+    ToolTip.text: control.text
+    ToolTip.delay: 500
 
     contentItem: RowLayout {
         spacing: 10
@@ -26,7 +30,7 @@ Button {
             font.family: control.theme.monoFont
             font.pixelSize: 10
             font.weight: Font.DemiBold
-            visible: !control.compact
+            visible: control.indexOnly || !control.compact
         }
         Text {
             Layout.fillWidth: true
@@ -38,6 +42,7 @@ Button {
             elide: Text.ElideRight
             horizontalAlignment: control.compact ? Text.AlignHCenter : Text.AlignLeft
             verticalAlignment: Text.AlignVCenter
+            visible: !control.indexOnly
         }
     }
 

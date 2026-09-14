@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         config = load_config(config_path, project_root, overrides)
         result = TrafficVideoProcessor(config).run()
-    except (ConfigError, FileNotFoundError, RuntimeError, ValueError) as exc:
+    except (ConfigError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         parser.error(str(exc))
         return 2
 

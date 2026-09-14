@@ -27,14 +27,19 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: "Результаты анализа"
                     color: root.theme.deepGreen
                     font.family: root.theme.sansFont
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                 }
-                Item { Layout.fillWidth: true }
+                Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
                 Text {
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: Math.min(108, implicitWidth)
+                    Layout.maximumWidth: 108
                     text: root.modeLabel
                     color: root.theme.slate
                     font.family: root.theme.monoFont
@@ -94,6 +99,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: root.backend.running ? "Счётчик синхронизирован с воспроизведением результата." : "Учитываются траектории, достигшие линии или вышедшие из нижней зоны кадра."
                 color: root.theme.slate
                 font.family: root.theme.sansFont

@@ -67,22 +67,32 @@ Item {
         }
 
         ColumnLayout {
-            anchors.centerIn: parent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: root.compact ? 16 : 24
+            anchors.rightMargin: root.compact ? 16 : 24
             spacing: 8
             visible: !root.backend.hasFrame
 
             Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: root.backend.running ? "Подготавливаем кадр…" : "Видео появится здесь после запуска"
                 color: "#eef5f3"
                 font.family: root.theme.sansFont
                 font.pixelSize: root.compact ? 14 : 16
+                wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
             }
             Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: root.backend.running ? "Поток обрабатывается в фоне" : "Выберите источник и начните анализ"
                 color: "#8faeab"
                 font.family: root.theme.sansFont
                 font.pixelSize: 12
+                wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
             }
         }
@@ -99,13 +109,16 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
+                    Layout.minimumWidth: 0
                     text: root.backend.statusText
                     color: "#d7e5e2"
                     font.family: root.theme.sansFont
                     font.pixelSize: 11
+                    elide: Text.ElideRight
                 }
                 Item { Layout.fillWidth: true }
                 Text {
+                    Layout.minimumWidth: 0
                     text: root.backend.progressText
                     color: "#a9c5c3"
                     font.family: root.theme.monoFont

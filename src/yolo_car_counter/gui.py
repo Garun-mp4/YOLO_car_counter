@@ -203,7 +203,7 @@ class AnalysisController(QObject):
         self._max_frames = max_frames
         self._finish_line_percent = self._base_config.finish_line_y * 100 if self._base_config else 90.0
 
-        self._status_text = "ГОТОВ"
+        self._status_text = "ОШИБКА" if self._startup_error else "ГОТОВ"
         self._error_text = self._startup_error
         self._running = False
         self._has_frame = False
@@ -394,10 +394,14 @@ class AnalysisController(QObject):
             )
         except (ConfigError, OSError, ValueError) as exc:
             self._set_error(str(exc))
+            self._set_status("ОШИБКА")
             return
 
         self._mode_groups = dict(config.mode_groups)
         self._reset_counts()
+        # A new run must not display the previous run's last frame while the
+        # model is loading or before the first fresh preview packet arrives.
+        self._set_has_frame(False)
         self._output_video_path = ""
         self.outputVideoPathChanged.emit()
         self._stop_requested = False
@@ -459,8 +463,13 @@ class AnalysisController(QObject):
     @Slot()
     def openOutputFolder(self) -> None:  # noqa: N802
         output_dir = Path(self._output_dir_path)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(output_dir)))
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(output_dir))):
+                raise OSError("Операционная система не открыла папку результатов")
+        except OSError as exc:
+            self._set_error(f"Не удалось открыть папку результатов: {exc}")
+            self._set_status("ОШИБКА")
 
     @Slot()
     def shutdown(self) -> None:
@@ -469,7 +478,16 @@ class AnalysisController(QObject):
         if self._worker is not None:
             self._worker.request_stop()
         if self._thread is not None and self._thread.isRunning():
-            self._thread.wait(5000)
+            # The normal finished/failed signal asks the thread to quit via
+            # the Qt event loop. During application shutdown the GUI thread
+            # immediately enters wait(), so that queued signal may not run.
+            # Request the event-loop exit synchronously before waiting.
+            self._thread.quit()
+            # PyTorch/CUDA model loading and one inference call cannot be
+            # forcefully interrupted safely. Wait for that operation to reach
+            # its cooperative stop point instead of leaving a live worker
+            # behind after the Qt application has exited.
+            self._thread.wait()
 
     @Slot()
     def _playback_tick(self) -> None:

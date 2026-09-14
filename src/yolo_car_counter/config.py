@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -55,6 +56,8 @@ class AppConfig:
 def resolve_path(value: str | Path, project_root: Path) -> Path:
     """Resolve an absolute path or a path relative to the project/current folder."""
 
+    if not isinstance(value, (str, Path)):
+        raise ConfigError("Путь к файлу или папке должен быть строкой")
     candidate = Path(value).expanduser()
     if candidate.is_absolute():
         return candidate.resolve()
@@ -68,9 +71,33 @@ def resolve_path(value: str | Path, project_root: Path) -> Path:
 
 def _as_float(value: Any, name: str) -> float:
     try:
-        return float(value)
+        converted = float(value)
     except (TypeError, ValueError) as exc:
         raise ConfigError(f"Параметр {name} должен быть числом") from exc
+    if not math.isfinite(converted):
+        raise ConfigError(f"Параметр {name} должен быть конечным числом")
+    return converted
+
+
+def _as_int(value: Any, name: str) -> int:
+    if isinstance(value, bool):
+        raise ConfigError(f"Параметр {name} должен быть целым числом")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"Параметр {name} должен быть целым числом") from exc
+
+
+def _as_bool(value: Any, name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "1", "on"}:
+            return True
+        if normalized in {"false", "no", "0", "off"}:
+            return False
+    raise ConfigError(f"Параметр {name} должен быть логическим значением")
 
 
 def _as_classes(value: Any) -> tuple[str, ...]:
@@ -104,12 +131,21 @@ def _load_modes(value: Any) -> dict[str, tuple[str, ...]]:
 def _normalize_device(value: Any) -> str | int | None:
     if value is None or str(value).strip().lower() in {"", "auto", "default"}:
         return None
+    if isinstance(value, bool):
+        raise ConfigError("runtime.device должен быть auto, cpu или номером устройства")
     if isinstance(value, int):
+        if value < 0:
+            raise ConfigError("runtime.device должен быть неотрицательным номером устройства")
         return value
     text = str(value).strip()
     if text.isdigit():
         return int(text)
-    return text
+    normalized = text.lower()
+    if normalized in {"cpu", "cuda", "mps"}:
+        return normalized
+    if normalized.startswith("cuda:") and normalized[6:].isdigit():
+        return normalized
+    raise ConfigError("runtime.device должен быть auto, cpu, mps, cuda или номером устройства")
 
 
 def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any] | None = None) -> AppConfig:
@@ -152,26 +188,39 @@ def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any]
     tracker = str(value_from(runtime, "tracker", "bytetrack.yaml"))
     confidence = _as_float(value_from(runtime, "confidence", 0.18), "runtime.confidence")
     iou = _as_float(value_from(runtime, "iou", 0.70), "runtime.iou")
-    image_size = int(value_from(runtime, "image_size", 960))
+    image_size = _as_int(value_from(runtime, "image_size", 960), "runtime.image_size")
     device = _normalize_device(value_from(runtime, "device", "auto"))
-    cpu_threads = int(value_from(runtime, "cpu_threads", 4))
+    cpu_threads = _as_int(value_from(runtime, "cpu_threads", 4), "runtime.cpu_threads")
 
-    direction = str(value_from(counting, "direction", "down")).lower()
+    direction = str(value_from(counting, "direction", "down")).strip().lower()
     finish_line_y = _as_float(value_from(counting, "finish_line_y", 0.90), "counting.finish_line_y")
     exit_margin_y = _as_float(value_from(counting, "exit_margin_y", 0.10), "counting.exit_margin_y")
-    max_missing_frames = int(value_from(counting, "max_missing_frames", 15))
-    min_track_observations = int(value_from(counting, "min_track_observations", 3))
+    max_missing_frames = _as_int(
+        value_from(counting, "max_missing_frames", 15),
+        "counting.max_missing_frames",
+    )
+    min_track_observations = _as_int(
+        value_from(counting, "min_track_observations", 3),
+        "counting.min_track_observations",
+    )
     min_motion_y = _as_float(value_from(counting, "min_motion_y", 0.01), "counting.min_motion_y")
-    show_window = bool(value_from(counting, "show_window", False))
+    show_window = _as_bool(value_from(counting, "show_window", False), "counting.show_window")
     preview_buffer_seconds = _as_float(
         value_from(runtime, "preview_buffer_seconds", 10.0),
         "runtime.preview_buffer_seconds",
     )
     playback_fps = _as_float(value_from(runtime, "playback_fps", 30.0), "runtime.playback_fps")
-    preview_width = int(value_from(runtime, "preview_width", 1024))
-    preview_jpeg_quality = int(value_from(runtime, "preview_jpeg_quality", 75))
+    preview_width = _as_int(value_from(runtime, "preview_width", 1024), "runtime.preview_width")
+    preview_jpeg_quality = _as_int(
+        value_from(runtime, "preview_jpeg_quality", 75),
+        "runtime.preview_jpeg_quality",
+    )
     max_frames_value = value_from(data, "max_frames", None)
-    max_frames = None if max_frames_value in (None, "") else int(max_frames_value)
+    max_frames = (
+        None
+        if max_frames_value in (None, "")
+        else _as_int(max_frames_value, "max_frames")
+    )
 
     if not 0 < confidence < 1:
         raise ConfigError("runtime.confidence должен быть в диапазоне (0, 1)")

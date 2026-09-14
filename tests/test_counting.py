@@ -32,6 +32,28 @@ def test_counts_track_when_it_crosses_finish_without_start_line() -> None:
     assert events[0].reason == "line_crossing"
 
 
+def test_counts_upward_track_when_it_crosses_finish_line() -> None:
+    counter = LineCrossingCounter(finish_line_y=200, direction="up")
+
+    counter.update([detection(11, 250)], frame_index=0, timestamp_seconds=0.0)
+    counter.update([detection(11, 215)], frame_index=1, timestamp_seconds=1.0)
+    events = counter.update([detection(11, 180)], frame_index=2, timestamp_seconds=2.0)
+
+    assert len(events) == 1
+    assert events[0].direction == "up"
+    assert counter.class_counts == {"car": 1}
+
+
+def test_counts_when_track_starts_exactly_on_finish_line() -> None:
+    counter = LineCrossingCounter(finish_line_y=200, direction="down")
+
+    counter.update([detection(12, 200)], frame_index=0, timestamp_seconds=0.0)
+    events = counter.update([detection(12, 220)], frame_index=1, timestamp_seconds=1.0)
+
+    assert len(events) == 1
+    assert events[0].reason == "line_crossing"
+
+
 def test_counts_track_that_appeared_below_finish_when_it_exits() -> None:
     counter = LineCrossingCounter(
         finish_line_y=200,

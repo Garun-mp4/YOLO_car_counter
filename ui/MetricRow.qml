@@ -11,6 +11,7 @@ Item {
 
     implicitHeight: 48
     Layout.fillWidth: true
+    Layout.minimumWidth: 0
 
     RowLayout {
         anchors.fill: parent
@@ -25,6 +26,7 @@ Item {
 
         Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: root.label
             color: root.theme.ink
             font.family: root.theme.sansFont

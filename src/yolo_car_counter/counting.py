@@ -146,7 +146,12 @@ class LineCrossingCounter:
             raise ValueError("max_missing_frames должен быть положительным")
         if min_track_observations < 1:
             raise ValueError("min_track_observations должен быть положительным")
-        if exit_margin_y < 0 or min_motion_y < 0:
+        if (
+            not math.isfinite(exit_margin_y)
+            or not math.isfinite(min_motion_y)
+            or exit_margin_y < 0
+            or min_motion_y < 0
+        ):
             raise ValueError("Параметры движения не могут быть отрицательными")
         if history_size < 2:
             raise ValueError("history_size должен быть не меньше 2")
@@ -372,5 +377,5 @@ class LineCrossingCounter:
 
     def _crossed(self, previous_y: float, current_y: float) -> bool:
         if self.direction == "down":
-            return previous_y < self.finish_line_y <= current_y
-        return previous_y > self.finish_line_y >= current_y
+            return previous_y <= self.finish_line_y <= current_y and current_y > previous_y
+        return previous_y >= self.finish_line_y >= current_y and current_y < previous_y
