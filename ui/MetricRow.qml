@@ -9,7 +9,7 @@ Item {
     property int value: 0
     property color markerColor: "#003c33"
 
-    implicitHeight: 50
+    implicitHeight: 48
     Layout.fillWidth: true
 
     RowLayout {

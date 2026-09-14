@@ -22,6 +22,8 @@ ApplicationWindow {
     property bool mobile: width < 720
     property bool tablet: width >= 720 && width < 1120
     property bool hasVideo: app.backendObject && app.backendObject.videoPath && app.backendObject.videoPath.length > 0
+    property int pageInset: app.mobile ? theme.pageInsetMobile : theme.pageInsetDesktop
+    property int sectionGap: theme.sectionGap
 
     property var modeItems: [
         { key: "all", label: "Весь поток", minWidth: 104 },
@@ -274,45 +276,23 @@ ApplicationWindow {
                         width: dashboardScroll.width
                         spacing: 0
 
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: app.mobile ? 104 : 100
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: app.mobile ? 16 : 32
-                                anchors.rightMargin: app.mobile ? 16 : 32
-                                anchors.topMargin: 24
-                                spacing: 8
-
-                                Text {
-                                    text: "Подсчёт транспорта"
-                                    color: theme.ink
-                                    font.family: theme.sansFont
-                                    font.pixelSize: app.mobile ? 27 : 32
-                                    font.weight: Font.Normal
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "Выберите источник и режим. Подсчёт — у нижней линии."
-                                    color: theme.slate
-                                    font.family: theme.sansFont
-                                    font.pixelSize: 13
-                                    wrapMode: Text.WordWrap
-                                }
-                            }
+                        PageHeader {
+                            theme: app.tokens
+                            mobile: app.mobile
+                            title: "Подсчёт транспорта"
+                            subtitle: "Выберите источник и режим. Подсчёт — у нижней линии."
                         }
 
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: app.mobile ? 170 : (app.tablet ? 148 : 112)
-                            Layout.leftMargin: app.mobile ? 16 : 32
-                            Layout.rightMargin: app.mobile ? 16 : 32
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
 
                             RowLayout {
                                 anchors.fill: parent
                                 visible: !app.mobile && !app.tablet
-                                spacing: 16
+                                spacing: app.sectionGap
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
@@ -484,8 +464,8 @@ ApplicationWindow {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 16 : 32
-                            Layout.rightMargin: app.mobile ? 16 : 32
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
                             Layout.preferredHeight: 1
                             color: theme.hairline
                         }
@@ -495,11 +475,11 @@ ApplicationWindow {
                             visible: !app.mobile
                             Layout.fillWidth: true
                             Layout.preferredHeight: app.tablet ? 406 : 478
-                            Layout.leftMargin: app.tablet ? 24 : 32
-                            Layout.rightMargin: app.tablet ? 24 : 32
-                            Layout.topMargin: 16
-                            Layout.bottomMargin: 16
-                            spacing: 16
+                            Layout.leftMargin: app.tablet ? theme.space24 : app.pageInset
+                            Layout.rightMargin: app.tablet ? theme.space24 : app.pageInset
+                            Layout.topMargin: app.sectionGap
+                            Layout.bottomMargin: app.sectionGap
+                            spacing: app.sectionGap
 
                             LiveMedia {
                                 Layout.fillWidth: true
@@ -525,11 +505,11 @@ ApplicationWindow {
                             id: mobileWorkArea
                             visible: app.mobile
                             Layout.fillWidth: true
-                            Layout.leftMargin: 16
-                            Layout.rightMargin: 16
-                            Layout.topMargin: 16
-                            Layout.bottomMargin: 16
-                            spacing: 16
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
+                            Layout.topMargin: app.sectionGap
+                            Layout.bottomMargin: app.sectionGap
+                            spacing: app.sectionGap
 
                             LiveMedia {
                                 Layout.fillWidth: true
@@ -551,8 +531,8 @@ ApplicationWindow {
                         Rectangle {
                             id: errorBanner
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 16 : 32
-                            Layout.rightMargin: app.mobile ? 16 : 32
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
                             Layout.preferredHeight: app.backendObject.errorText.length > 0 ? errorCopy.implicitHeight + 24 : 0
                             visible: app.backendObject.errorText.length > 0
                             color: theme.errorSoft
@@ -587,199 +567,197 @@ ApplicationWindow {
                         width: settingsScroll.width
                         spacing: 0
 
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: app.mobile ? 94 : 92
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: app.mobile ? 16 : 32
-                                anchors.rightMargin: app.mobile ? 16 : 32
-                                anchors.topMargin: 24
-                                spacing: 8
-                                Text {
-                                    text: "Параметры запуска"
-                                    color: theme.ink
-                                    font.family: theme.sansFont
-                                    font.pixelSize: app.mobile ? 27 : 32
-                                    font.weight: Font.Normal
-                                }
-                                Text {
-                                    text: "Настройте источник, модель и границы, если их нужно изменить."
-                                    color: theme.slate
-                                    font.family: theme.sansFont
-                                    font.pixelSize: 13
-                                    wrapMode: Text.WordWrap
-                                }
-                            }
+                        PageHeader {
+                            theme: app.tokens
+                            mobile: app.mobile
+                            title: "Параметры запуска"
+                            subtitle: "Настройте источник, модель и границы, если их нужно изменить."
                         }
 
-                        Flow {
+                        GridLayout {
                             id: settingsPanels
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 16 : 32
-                            Layout.rightMargin: app.mobile ? 16 : 32
-                            spacing: 16
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
+                            columns: app.mobile || app.tablet ? 1 : 2
+                            columnSpacing: app.sectionGap
+                            rowSpacing: app.sectionGap
 
-                            Rectangle {
-                                width: app.mobile ? settingsScroll.width - 40 : (settingsScroll.width - 64 - settingsPanels.spacing) / 2
-                                height: app.mobile ? 218 : 196
-                                color: theme.canvas
-                                border.color: theme.hairline
-                                border.width: 1
-                                radius: theme.radiusPanel
+                            SurfaceCard {
+                                id: sourceModelCard
+                                theme: app.tokens
+                                mobile: app.mobile
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: app.mobile ? 16 : 24
-                                    spacing: 8
-                                    Text {
-                                        text: "Источник и модель"
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Источник и модель"
+                                    color: theme.ink
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 15
+                                    font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Пути используются для следующего запуска."
+                                    color: theme.slate
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 11
+                                }
+                                Text { text: "Видео"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: theme.space8
+                                    TextField {
+                                        id: settingsVideoField
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        Layout.preferredHeight: theme.controlHeight
+                                        text: app.backendObject.videoPath
+                                        selectByMouse: true
                                         color: theme.ink
-                                        font.family: theme.sansFont
-                                        font.pixelSize: 15
-                                        font.weight: Font.DemiBold
+                                        font.family: theme.monoFont
+                                        font.pixelSize: 9
+                                        onEditingFinished: app.backendObject.setVideoPath(text)
+                                        background: Rectangle {
+                                            radius: theme.radiusSmall
+                                            color: theme.canvas
+                                            border.color: settingsVideoField.activeFocus ? theme.actionBlue : theme.border
+                                            border.width: settingsVideoField.activeFocus ? 2 : 1
+                                        }
                                     }
-                                    Text {
-                                        text: "Пути используются для следующего запуска."
-                                        color: theme.slate
-                                        font.family: theme.sansFont
-                                        font.pixelSize: 11
+                                    AppButton {
+                                        theme: app.tokens
+                                        text: "Обзор"
+                                        compact: true
+                                        variant: "secondary"
+                                        onClicked: app.backendObject.chooseVideo()
                                     }
-                                    Text { text: "Видео"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
-                                    RowLayout {
+                                }
+                                Text { text: "Модель YOLO"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: theme.space8
+                                    TextField {
+                                        id: settingsModelField
                                         Layout.fillWidth: true
-                                        spacing: 8
-                                        TextField {
-                                            id: settingsVideoField
-                                            Layout.fillWidth: true
-                                            Layout.preferredHeight: 36
-                                            text: app.backendObject.videoPath
-                                            selectByMouse: true
-                                            color: theme.ink
-                                            font.family: theme.monoFont
-                                            font.pixelSize: 9
-                                            onEditingFinished: app.backendObject.setVideoPath(text)
-                                            background: Rectangle {
-                                                radius: theme.radiusSmall
-                                                color: theme.canvas
-                                                border.color: settingsVideoField.activeFocus ? theme.actionBlue : theme.border
-                                                border.width: settingsVideoField.activeFocus ? 2 : 1
-                                            }
-                                        }
-                                        AppButton {
-                                            theme: app.tokens
-                                            text: "Обзор"
-                                            compact: true
-                                            variant: "secondary"
-                                            onClicked: app.backendObject.chooseVideo()
+                                        Layout.minimumWidth: 0
+                                        Layout.preferredHeight: theme.controlHeight
+                                        text: app.backendObject.modelPath
+                                        selectByMouse: true
+                                        color: theme.ink
+                                        font.family: theme.monoFont
+                                        font.pixelSize: 9
+                                        onEditingFinished: app.backendObject.setModelPath(text)
+                                        background: Rectangle {
+                                            radius: theme.radiusSmall
+                                            color: theme.canvas
+                                            border.color: settingsModelField.activeFocus ? theme.actionBlue : theme.border
+                                            border.width: settingsModelField.activeFocus ? 2 : 1
                                         }
                                     }
-                                    Text { text: "Модель YOLO"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 8
-                                        TextField {
-                                            id: settingsModelField
-                                            Layout.fillWidth: true
-                                            Layout.preferredHeight: 36
-                                            text: app.backendObject.modelPath
-                                            selectByMouse: true
-                                            color: theme.ink
-                                            font.family: theme.monoFont
-                                            font.pixelSize: 9
-                                            onEditingFinished: app.backendObject.setModelPath(text)
-                                            background: Rectangle {
-                                                radius: theme.radiusSmall
-                                                color: theme.canvas
-                                                border.color: settingsModelField.activeFocus ? theme.actionBlue : theme.border
-                                                border.width: settingsModelField.activeFocus ? 2 : 1
-                                            }
-                                        }
-                                        AppButton {
-                                            theme: app.tokens
-                                            text: "Обзор"
-                                            compact: true
-                                            variant: "secondary"
-                                            onClicked: app.backendObject.chooseModel()
-                                        }
+                                    AppButton {
+                                        theme: app.tokens
+                                        text: "Обзор"
+                                        compact: true
+                                        variant: "secondary"
+                                        onClicked: app.backendObject.chooseModel()
                                     }
                                 }
                             }
 
-                            Rectangle {
-                                width: app.mobile ? settingsScroll.width - 40 : (settingsScroll.width - 64 - settingsPanels.spacing) / 2
-                                height: app.mobile ? 278 : 246
-                                color: theme.canvas
-                                border.color: theme.hairline
-                                border.width: 1
-                                radius: theme.radiusPanel
+                            SurfaceCard {
+                                id: linesCard
+                                theme: app.tokens
+                                mobile: app.mobile
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: app.mobile ? 16 : 24
-                                    spacing: 8
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Контрольные линии"
+                                    color: theme.ink
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 15
+                                    font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Используется одна линия у нижнего края. Потерянный рядом трек засчитывается только при подтверждённом движении к выходу."
+                                    color: theme.slate
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 11
+                                    wrapMode: Text.WordWrap
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: theme.space8
+                                    spacing: theme.space8
                                     Text {
-                                        text: "Контрольные линии"
-                                        color: theme.ink
-                                        font.family: theme.sansFont
-                                        font.pixelSize: 15
-                                        font.weight: Font.DemiBold
-                                    }
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: "Используется одна линия у нижнего края. Потерянный рядом трек засчитывается только при подтверждённом движении к выходу."
+                                        Layout.minimumWidth: 0
+                                        text: "Линия подсчёта"
                                         color: theme.slate
                                         font.family: theme.sansFont
                                         font.pixelSize: 11
-                                        wrapMode: Text.WordWrap
                                     }
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Layout.topMargin: 8
-                                        spacing: 8
-                                        Text { text: "Линия подсчёта"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 11 }
-                                        TextField {
-                                            id: finishLineField
-                                            Layout.preferredWidth: 64
-                                            Layout.preferredHeight: 36
-                                            text: Math.round(app.backendObject.finishLinePercent).toString()
-                                            selectByMouse: true
-                                            color: theme.ink
-                                            font.family: theme.monoFont
-                                            font.pixelSize: 12
-                                            horizontalAlignment: Text.AlignRight
-                                            validator: DoubleValidator { bottom: 70; top: 97; decimals: 1 }
-                                            onEditingFinished: app.backendObject.setFinishLinePercent(Number(text))
-                                            background: Rectangle { radius: theme.radiusSmall; color: theme.canvas; border.color: finishLineField.activeFocus ? theme.deepGreen : theme.border; border.width: finishLineField.activeFocus ? 2 : 1 }
+                                    TextField {
+                                        id: finishLineField
+                                        Layout.preferredWidth: 64
+                                        Layout.preferredHeight: theme.controlHeight
+                                        text: Math.round(app.backendObject.finishLinePercent).toString()
+                                        selectByMouse: true
+                                        color: theme.ink
+                                        font.family: theme.monoFont
+                                        font.pixelSize: 12
+                                        horizontalAlignment: Text.AlignRight
+                                        validator: DoubleValidator { bottom: 70; top: 97; decimals: 1 }
+                                        onEditingFinished: app.backendObject.setFinishLinePercent(Number(text))
+                                        background: Rectangle {
+                                            radius: theme.radiusSmall
+                                            color: theme.canvas
+                                            border.color: finishLineField.activeFocus ? theme.deepGreen : theme.border
+                                            border.width: finishLineField.activeFocus ? 2 : 1
                                         }
-                                        Text { text: "% от верхнего края"; color: theme.deepGreen; font.family: theme.monoFont; font.pixelSize: 11 }
                                     }
-                                    Item { Layout.fillHeight: true }
                                     Text {
-                                        text: "ЛИНИЯ " + Math.round(app.backendObject.finishLinePercent) + "%   ·   ПРОГНОЗ ВЫХОДА ВКЛЮЧЁН"
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        text: app.mobile ? "% сверху" : "% от верхнего края"
                                         color: theme.deepGreen
                                         font.family: theme.monoFont
-                                        font.pixelSize: 10
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
                                     }
+                                }
+                                Item { Layout.fillHeight: true; Layout.minimumHeight: theme.space8 }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "ЛИНИЯ " + Math.round(app.backendObject.finishLinePercent) + "%   ·   ПРОГНОЗ ВЫХОДА ВКЛЮЧЁН"
+                                    color: theme.deepGreen
+                                    font.family: theme.monoFont
+                                    font.pixelSize: 10
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 16 : 32
-                            Layout.rightMargin: app.mobile ? 16 : 32
-                            Layout.topMargin: 16
-                            Layout.preferredHeight: 76
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
+                            Layout.topMargin: app.sectionGap
+                            implicitHeight: Math.max(app.mobile ? 104 : 76, modeInfoCopy.implicitHeight + 32)
+                            Layout.preferredHeight: implicitHeight
                             color: theme.paleBlue
                             radius: theme.radiusSmall
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 16
-                                anchors.rightMargin: 16
-                                spacing: 12
+                                anchors.leftMargin: theme.space16
+                                anchors.rightMargin: theme.space16
+                                spacing: theme.space12
                                 Text { text: "Режимы"; color: theme.actionBlue; font.family: theme.monoFont; font.pixelSize: 10; font.weight: Font.DemiBold }
-                                Text { Layout.fillWidth: true; text: "Фильтр выбирает классы COCO, переданные в текущий запуск YOLO. В режиме «Весь поток» итог дополнительно раскладывается по категориям."; color: theme.ink; font.family: theme.sansFont; font.pixelSize: 12; wrapMode: Text.WordWrap }
+                                Text { id: modeInfoCopy; Layout.fillWidth: true; text: "Фильтр выбирает классы COCO, переданные в текущий запуск YOLO. В режиме «Весь поток» итог дополнительно раскладывается по категориям."; color: theme.ink; font.family: theme.sansFont; font.pixelSize: 12; wrapMode: Text.WordWrap }
                             }
                         }
 
@@ -798,73 +776,122 @@ ApplicationWindow {
                         width: resultsScroll.width
                         spacing: 0
 
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: app.mobile ? 94 : 92
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: app.mobile ? 16 : 32
-                                anchors.rightMargin: app.mobile ? 16 : 32
-                                anchors.topMargin: 24
-                                spacing: 8
-                                Text { text: "Результаты запуска"; color: theme.ink; font.family: theme.sansFont; font.pixelSize: app.mobile ? 27 : 32; font.weight: Font.Normal }
-                                Text { text: "Счётчики и путь к размеченному видео последнего завершённого анализа."; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 13; wrapMode: Text.WordWrap }
-                            }
+                        PageHeader {
+                            theme: app.tokens
+                            mobile: app.mobile
+                            title: "Результаты запуска"
+                            subtitle: "Счётчики и путь к размеченному видео последнего завершённого анализа."
                         }
 
-                        Flow {
+                        GridLayout {
                             id: resultPanels
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 16 : 32
-                            Layout.rightMargin: app.mobile ? 16 : 32
-                            spacing: 16
+                            Layout.leftMargin: app.pageInset
+                            Layout.rightMargin: app.pageInset
+                            columns: app.mobile || app.tablet ? 1 : 2
+                            columnSpacing: app.sectionGap
+                            rowSpacing: app.sectionGap
 
-                            Rectangle {
-                                width: app.mobile ? resultsScroll.width - 40 : (resultsScroll.width - 64 - resultPanels.spacing) * 0.58
-                                height: app.mobile ? 282 : 260
-                                color: app.backendObject.outputVideoPath.length > 0 ? theme.paleGreen : theme.softStone
-                                radius: theme.radiusPanel
+                            SurfaceCard {
+                                id: outputCard
+                                theme: app.tokens
+                                mobile: app.mobile
+                                surfaceColor: app.backendObject.outputVideoPath.length > 0 ? theme.paleGreen : theme.softStone
+                                strokeColor: "transparent"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: app.mobile ? 18 : 22
-                                    spacing: 8
-                                    Text { text: "Выходной файл"; color: theme.deepGreen; font.family: theme.monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.7 }
-                                    Text { text: app.backendObject.outputVideoPath.length > 0 ? "Размеченное видео готово" : "Анализ ещё не запускался"; color: theme.ink; font.family: theme.sansFont; font.pixelSize: 20; font.weight: Font.Normal; wrapMode: Text.WordWrap }
-                                    Text { text: app.backendObject.outputVideoPath.length > 0 ? app.compactPath(app.backendObject.outputVideoPath) : "После завершения здесь появится путь к файлу."; color: theme.slate; font.family: theme.monoFont; font.pixelSize: 10; wrapMode: Text.WrapAnywhere; maximumLineCount: 3 }
-                                    Item { Layout.fillHeight: true }
-                                    RowLayout {
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Выходной файл"
+                                    color: theme.deepGreen
+                                    font.family: theme.monoFont
+                                    font.pixelSize: 10
+                                    font.weight: Font.DemiBold
+                                    font.letterSpacing: 0.7
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: app.backendObject.outputVideoPath.length > 0 ? "Размеченное видео готово" : "Анализ ещё не запускался"
+                                    color: theme.ink
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 20
+                                    font.weight: Font.Normal
+                                    wrapMode: Text.WordWrap
+                                }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: app.backendObject.outputVideoPath.length > 0 ? app.compactPath(app.backendObject.outputVideoPath) : "После завершения здесь появится путь к файлу."
+                                    color: theme.slate
+                                    font.family: theme.monoFont
+                                    font.pixelSize: 10
+                                    wrapMode: Text.WrapAnywhere
+                                    maximumLineCount: 3
+                                }
+                                Item { Layout.fillHeight: true; Layout.minimumHeight: theme.space8 }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: theme.space8
+                                    AppButton {
                                         Layout.fillWidth: true
-                                        spacing: 8
-                                        AppButton { theme: app.tokens; text: "Открыть папку"; compact: true; variant: "primary"; enabled: app.backendObject.outputVideoPath.length > 0; onClicked: app.backendObject.openOutputFolder() }
-                                        AppButton { theme: app.tokens; text: "Сбросить"; compact: true; variant: "secondary"; enabled: !app.backendObject.running; onClicked: app.backendObject.resetSession() }
+                                        Layout.minimumWidth: 0
+                                        theme: app.tokens
+                                        text: app.mobile ? "Открыть" : "Открыть папку"
+                                        compact: true
+                                        variant: "primary"
+                                        enabled: app.backendObject.outputVideoPath.length > 0
+                                        onClicked: app.backendObject.openOutputFolder()
+                                    }
+                                    AppButton {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        theme: app.tokens
+                                        text: "Сбросить"
+                                        compact: true
+                                        variant: "secondary"
+                                        enabled: !app.backendObject.running
+                                        onClicked: app.backendObject.resetSession()
                                     }
                                 }
                             }
 
-                            Rectangle {
-                                width: app.mobile ? resultsScroll.width - 40 : (resultsScroll.width - 64 - resultPanels.spacing) * 0.42
-                                height: app.mobile ? 282 : 260
-                                color: theme.canvas
-                                border.color: theme.hairline
-                                border.width: 1
-                                radius: theme.radiusPanel
+                            SurfaceCard {
+                                id: summaryCard
+                                theme: app.tokens
+                                mobile: app.mobile
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: app.mobile ? 16 : 24
-                                    anchors.rightMargin: app.mobile ? 16 : 24
-                                    anchors.topMargin: app.mobile ? 16 : 24
-                                    anchors.bottomMargin: app.mobile ? 16 : 16
-                                    spacing: 0
-                                    Text { text: "Сводка"; color: theme.deepGreen; font.family: theme.sansFont; font.pixelSize: 14; font.weight: Font.DemiBold }
-                                    Text { Layout.topMargin: 16; text: "Всего прошло"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
-                                    Text { text: app.backendObject.totalCount; color: theme.ink; font.family: theme.monoFont; font.pixelSize: 34; font.weight: Font.Normal }
-                                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: theme.hairline; Layout.topMargin: 6 }
-                                    MetricRow { theme: app.tokens; label: "Легковые"; value: app.backendObject.carsCount; markerColor: app.tokens.deepGreen }
-                                    MetricRow { theme: app.tokens; label: "Двухколёсные"; value: app.backendObject.twoWheelersCount; markerColor: app.tokens.coral }
-                                    MetricRow { theme: app.tokens; label: "Тяжёлые"; value: app.backendObject.heavyCount; markerColor: app.tokens.actionBlue }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Сводка"
+                                    color: theme.deepGreen
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 14
+                                    font.weight: Font.DemiBold
                                 }
+                                Text {
+                                    Layout.topMargin: theme.space8
+                                    text: "Всего прошло"
+                                    color: theme.slate
+                                    font.family: theme.sansFont
+                                    font.pixelSize: 12
+                                }
+                                Text {
+                                    text: app.backendObject.totalCount
+                                    color: theme.ink
+                                    font.family: theme.monoFont
+                                    font.pixelSize: 34
+                                    font.weight: Font.Normal
+                                }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+                                    color: theme.hairline
+                                }
+                                MetricRow { theme: app.tokens; label: "Легковые"; value: app.backendObject.carsCount; markerColor: app.tokens.deepGreen }
+                                MetricRow { theme: app.tokens; label: "Двухколёсные"; value: app.backendObject.twoWheelersCount; markerColor: app.tokens.coral }
+                                MetricRow { theme: app.tokens; label: "Тяжёлые"; value: app.backendObject.heavyCount; markerColor: app.tokens.actionBlue }
                             }
                         }
 
