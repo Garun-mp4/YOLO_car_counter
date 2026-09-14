@@ -1,4 +1,4 @@
-from yolo_car_counter.counting import Detection, LineCrossingCounter
+from yolo_car_counter.counting import Detection, LineCrossingCounter, aggregate_category_counts
 
 
 def detection(track_id: int, center_y: float, class_name: str = "car") -> Detection:
@@ -47,3 +47,25 @@ def test_does_not_count_same_track_twice() -> None:
 
     assert counter.total_count == 1
 
+
+def test_aggregates_four_vehicle_families_for_dashboard() -> None:
+    class_counts = {
+        "car": 8,
+        "bicycle": 2,
+        "motorcycle": 3,
+        "bus": 1,
+        "truck": 4,
+    }
+    mode_groups = {
+        "all": ("bicycle", "car", "motorcycle", "bus", "truck"),
+        "cars": ("car",),
+        "two_wheelers": ("bicycle", "motorcycle"),
+        "heavy": ("bus", "truck"),
+    }
+
+    assert aggregate_category_counts(class_counts, mode_groups) == {
+        "all": 18,
+        "cars": 8,
+        "two_wheelers": 5,
+        "heavy": 5,
+    }

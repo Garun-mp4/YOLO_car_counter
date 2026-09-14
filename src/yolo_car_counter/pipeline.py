@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,11 @@ import cv2
 
 from .config import AppConfig
 from .counting import CountEvent, Detection, LineCrossingCounter
+
+
+FrameCallback = Callable[[Any, int, LineCrossingCounter], None]
+ProgressCallback = Callable[[int, int], None]
+StopRequested = Callable[[], bool]
 
 
 @dataclass(frozen=True)
@@ -36,7 +42,12 @@ class TrafficVideoProcessor:
         self._class_names: dict[int, str] = {}
         self._class_ids: list[int] = []
 
-    def run(self) -> VideoRunResult:
+    def run(
+        self,
+        frame_callback: FrameCallback | None = None,
+        progress_callback: ProgressCallback | None = None,
+        stop_requested: StopRequested | None = None,
+    ) -> VideoRunResult:
         self._validate_input_files()
         self._load_model()
 
@@ -76,6 +87,10 @@ class TrafficVideoProcessor:
 
         try:
             while True:
+                if stop_requested is not None and stop_requested():
+                    stopped_by_user = True
+                    break
+
                 success, frame = capture.read()
                 if not success:
                     break
@@ -88,6 +103,9 @@ class TrafficVideoProcessor:
                 annotated = self._annotate_frame(frame, detections, counter, height)
                 writer.write(annotated)
 
+                if frame_callback is not None:
+                    frame_callback(annotated, frame_index, counter)
+
                 if self.config.show_window:
                     cv2.imshow("YOLO Car Counter", annotated)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -95,7 +113,9 @@ class TrafficVideoProcessor:
                         break
 
                 frame_index += 1
-                if frame_index % 50 == 0:
+                if progress_callback is not None:
+                    progress_callback(frame_index, frame_count_hint)
+                elif frame_index % 50 == 0:
                     suffix = f"/{frame_count_hint}" if frame_count_hint > 0 else ""
                     print(f"\rОбработано кадров: {frame_index}{suffix}", end="", flush=True)
                 if self.config.max_frames is not None and frame_index >= self.config.max_frames:
@@ -106,7 +126,8 @@ class TrafficVideoProcessor:
             if self.config.show_window:
                 cv2.destroyAllWindows()
 
-        print()
+        if progress_callback is None:
+            print()
         events = counter.events
         self._write_events(output_paths["events"], events)
         self._write_summary(
@@ -225,8 +246,10 @@ class TrafficVideoProcessor:
         start_y = int(self.config.start_line_y * height)
         finish_y = int(self.config.finish_line_y * height)
         line_color = (0, 200, 255)
-        cv2.line(annotated, (0, start_y), (annotated.shape[1], start_y), line_color, 2)
-        cv2.line(annotated, (0, finish_y), (annotated.shape[1], finish_y), (0, 0, 255), 2)
+        line_overlay = annotated.copy()
+        cv2.line(line_overlay, (0, start_y), (annotated.shape[1], start_y), line_color, 2)
+        cv2.line(line_overlay, (0, finish_y), (annotated.shape[1], finish_y), (0, 0, 255), 2)
+        cv2.addWeighted(line_overlay, 0.42, annotated, 0.58, 0, annotated)
         self._put_text(annotated, "START", (10, max(start_y - 8, 20)), line_color)
         self._put_text(annotated, "FINISH", (10, max(finish_y - 8, 20)), (0, 0, 255))
 
@@ -314,4 +337,3 @@ class TrafficVideoProcessor:
         }
         with path.open("w", encoding="utf-8") as file:
             json.dump(summary, file, ensure_ascii=False, indent=2)
-

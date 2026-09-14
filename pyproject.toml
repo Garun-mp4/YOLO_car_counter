@@ -12,11 +12,12 @@ dependencies = [
     "ultralytics>=8.4.0,<9.0.0",
     "opencv-python>=4.8.0,<5.0.0",
     "PyYAML>=6.0,<7.0",
+    "PySide6>=6.8.0,<7.0.0",
 ]
 
 [project.scripts]
 yolo-car-counter = "yolo_car_counter.cli:main"
+yolo-car-counter-gui = "yolo_car_counter.gui:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

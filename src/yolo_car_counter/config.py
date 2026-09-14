@@ -36,6 +36,7 @@ class AppConfig:
     device: str | int | None
     mode: str
     target_classes: tuple[str, ...]
+    mode_groups: dict[str, tuple[str, ...]]
     direction: str
     start_line_y: float
     finish_line_y: float
@@ -182,10 +183,10 @@ def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any]
         device=device,
         mode=selected_mode,
         target_classes=target_classes,
+        mode_groups=modes,
         direction=direction,
         start_line_y=start_line_y,
         finish_line_y=finish_line_y,
         show_window=show_window,
         max_frames=max_frames,
     )
-

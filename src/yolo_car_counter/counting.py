@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,25 @@ class CountEvent:
     frame_index: int
     timestamp_seconds: float
     direction: str
+
+
+def aggregate_category_counts(
+    class_counts: Mapping[str, int],
+    mode_groups: Mapping[str, tuple[str, ...]],
+) -> dict[str, int]:
+    """Aggregate finished crossings into the UI's four vehicle families."""
+
+    all_classes = mode_groups.get("all", tuple(class_counts))
+    categories = {
+        "all": all_classes,
+        "cars": mode_groups.get("cars", ("car",)),
+        "two_wheelers": mode_groups.get("two_wheelers", ("bicycle", "motorcycle")),
+        "heavy": mode_groups.get("heavy", ("bus", "truck")),
+    }
+    return {
+        category: sum(class_counts.get(class_name, 0) for class_name in classes)
+        for category, classes in categories.items()
+    }
 
 
 class LineCrossingCounter:
@@ -124,4 +144,3 @@ class LineCrossingCounter:
         if self.direction == "down":
             return previous_y < line_y <= current_y
         return previous_y > line_y >= current_y
-
