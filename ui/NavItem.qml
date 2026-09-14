@@ -46,14 +46,5 @@ Button {
         color: control.active ? control.theme.paleGreen : (control.hovered ? "#f7f8f7" : "transparent")
         border.color: control.activeFocus ? control.theme.focusBlue : "transparent"
         border.width: control.activeFocus ? 2 : 0
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: control.active ? 3 : 0
-            color: control.theme.deepGreen
-            radius: 2
-        }
     }
 }
