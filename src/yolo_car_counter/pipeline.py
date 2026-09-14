@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from queue import Full, Queue
+from threading import Thread
 from typing import Any
 
 import cv2
@@ -31,6 +34,66 @@ class VideoRunResult:
     fps: float
     total_count: int
     class_counts: dict[str, int]
+
+
+class _AsyncVideoWriter:
+    """Write annotated frames off the inference thread with bounded memory."""
+
+    _SENTINEL = object()
+
+    def __init__(self, writer: cv2.VideoWriter, capacity: int = 8) -> None:
+        self._writer = writer
+        self._queue: Queue[Any] = Queue(maxsize=capacity)
+        self._error: BaseException | None = None
+        self._closed = False
+        self._thread = Thread(target=self._run, name="annotated-video-writer", daemon=True)
+        self._thread.start()
+
+    def write(self, frame: Any) -> None:
+        """Queue a frame while still surfacing encoder failures promptly."""
+
+        self._raise_if_failed()
+        while True:
+            self._raise_if_failed()
+            try:
+                self._queue.put(frame, timeout=0.1)
+                return
+            except Full:
+                continue
+
+    def close(self) -> None:
+        """Flush queued frames and release the underlying OpenCV writer."""
+
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            while self._thread.is_alive():
+                if self._error is not None:
+                    break
+                try:
+                    self._queue.put(self._SENTINEL, timeout=0.1)
+                    break
+                except Full:
+                    continue
+            self._thread.join()
+        finally:
+            self._writer.release()
+        self._raise_if_failed()
+
+    def _run(self) -> None:
+        try:
+            while True:
+                frame = self._queue.get()
+                if frame is self._SENTINEL:
+                    return
+                self._writer.write(frame)
+        except BaseException as exc:  # noqa: BLE001 - re-raised by the producer
+            self._error = exc
+
+    def _raise_if_failed(self) -> None:
+        if self._error is not None:
+            raise RuntimeError("Ошибка записи размеченного видео") from self._error
 
 
 class TrafficVideoProcessor:
@@ -67,15 +130,16 @@ class TrafficVideoProcessor:
 
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
         output_paths = self._output_paths()
-        writer = cv2.VideoWriter(
+        video_writer = cv2.VideoWriter(
             str(output_paths["video"]),
             cv2.VideoWriter_fourcc(*"mp4v"),
             fps,
             (width, height),
         )
-        if not writer.isOpened():
+        if not video_writer.isOpened():
             capture.release()
             raise RuntimeError(f"Не удалось создать выходное видео: {output_paths['video']}")
+        writer = _AsyncVideoWriter(video_writer)
 
         counter = LineCrossingCounter(
             finish_line_y=self.config.finish_line_y * height,
@@ -125,7 +189,7 @@ class TrafficVideoProcessor:
                     break
         finally:
             capture.release()
-            writer.release()
+            writer.close()
             if self.config.show_window:
                 cv2.destroyAllWindows()
 
@@ -166,6 +230,7 @@ class TrafficVideoProcessor:
                 "Не установлен Ultralytics. Выполните: python -m pip install -r requirements.txt"
             ) from exc
 
+        self._configure_torch_runtime()
         self._model = YOLO(str(self.config.model))
         raw_names = getattr(self._model, "names", {})
         if isinstance(raw_names, dict):
@@ -187,6 +252,38 @@ class TrafficVideoProcessor:
             raise ValueError(
                 f"Классы не найдены в модели: {', '.join(missing)}. Доступные классы: {available}"
             )
+
+    def _configure_torch_runtime(self) -> None:
+        """Tune the inference backend without changing model weights or thresholds."""
+
+        try:
+            import torch
+        except ImportError:
+            return
+
+        if self._cuda_is_active(torch):
+            # The input shape is stable for this pipeline. cuDNN can therefore
+            # choose a faster convolution algorithm once and reuse it for all
+            # following frames. This preserves FP32 model outputs.
+            torch.backends.cudnn.benchmark = True
+            return
+
+        # CPU fallback: avoid oversubscribing small CPUs with more PyTorch
+        # workers than this model benefits from. The value remains configurable.
+        available_threads = os.cpu_count() or 1
+        torch.set_num_threads(min(self.config.cpu_threads, available_threads))
+
+    def _cuda_is_active(self, torch_module: Any) -> bool:
+        """Return whether the configured device will execute through CUDA."""
+
+        if not torch_module.cuda.is_available():
+            return False
+        if self.config.device is None:
+            return True
+        if isinstance(self.config.device, int):
+            return True
+        normalized = str(self.config.device).strip().lower()
+        return normalized == "cuda" or normalized.startswith("cuda:") or normalized.isdigit()
 
     def _track_frame(self, frame: Any) -> Any:
         if self._model is None:
@@ -248,9 +345,26 @@ class TrafficVideoProcessor:
     ) -> Any:
         annotated = frame.copy()
         finish_y = int(self.config.finish_line_y * height)
-        line_overlay = annotated.copy()
-        cv2.line(line_overlay, (0, finish_y), (annotated.shape[1], finish_y), (0, 0, 255), 2)
-        cv2.addWeighted(line_overlay, 0.42, annotated, 0.58, 0, annotated)
+        # Blend only a narrow band around the line instead of copying and
+        # blending the complete 1080p frame on every iteration.
+        band_top = max(0, finish_y - 2)
+        band_bottom = min(annotated.shape[0], finish_y + 3)
+        line_overlay = annotated[band_top:band_bottom].copy()
+        cv2.line(
+            line_overlay,
+            (0, finish_y - band_top),
+            (annotated.shape[1], finish_y - band_top),
+            (0, 0, 255),
+            2,
+        )
+        cv2.addWeighted(
+            line_overlay,
+            0.42,
+            annotated[band_top:band_bottom],
+            0.58,
+            0,
+            annotated[band_top:band_bottom],
+        )
         self._put_text(annotated, "COUNT LINE", (10, max(finish_y - 8, 20)), (0, 0, 255))
 
         for detection in detections:

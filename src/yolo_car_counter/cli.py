@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--iou", type=float, help="Порог IoU.")
     parser.add_argument("--image-size", type=int, help="Размер изображения для инференса.")
     parser.add_argument("--device", help="Устройство: auto, cpu или номер CUDA-устройства.")
+    parser.add_argument("--cpu-threads", type=int, help="Число потоков PyTorch в CPU-режиме.")
     parser.add_argument("--finish-line", type=float, help="Линия подсчёта как доля высоты кадра.")
     parser.add_argument("--exit-margin", type=float, help="Допуск прогноза выхода как доля высоты кадра.")
     parser.add_argument("--max-missing-frames", type=int, help="Сколько кадров ждать потерянный трек.")
@@ -66,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         ("iou", "iou"),
         ("image_size", "image_size"),
         ("device", "device"),
+        ("cpu_threads", "cpu_threads"),
         ("finish_line", "finish_line_y"),
         ("exit_margin", "exit_margin_y"),
         ("max_missing_frames", "max_missing_frames"),

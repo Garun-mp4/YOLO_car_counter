@@ -124,15 +124,15 @@ class AnalysisWorker(QObject):
     def _on_frame(self, frame: Any, frame_index: int, counter: LineCrossingCounter) -> None:
         preview = frame
         frame_height, frame_width = frame.shape[:2]
-        if frame_width > 1280:
-            preview_width = 1280
+        if frame_width > self.config.preview_width:
+            preview_width = self.config.preview_width
             preview_height = max(1, int(frame_height * preview_width / frame_width))
             preview = cv2.resize(frame, (preview_width, preview_height), interpolation=cv2.INTER_AREA)
 
         encoded_ok, encoded = cv2.imencode(
             ".jpg",
             preview,
-            [cv2.IMWRITE_JPEG_QUALITY, 80],
+            [cv2.IMWRITE_JPEG_QUALITY, self.config.preview_jpeg_quality],
         )
         if not encoded_ok:
             raise RuntimeError("Не удалось подготовить кадр для предпросмотра")

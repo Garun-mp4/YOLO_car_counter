@@ -18,6 +18,8 @@ def test_default_config_uses_passenger_cars_mode() -> None:
     assert config.min_track_observations == 3
     assert config.preview_buffer_seconds == 10.0
     assert config.playback_fps == 30.0
+    assert config.preview_width == 1024
+    assert config.preview_jpeg_quality == 75
 
 
 def test_mode_override_selects_heavy_transport() -> None:

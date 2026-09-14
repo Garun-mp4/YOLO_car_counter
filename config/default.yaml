@@ -28,9 +28,15 @@ runtime:
   iou: 0.70
   image_size: 960
   device: auto
+  # Число потоков PyTorch для CPU-fallback. На небольших моделях 4 потока
+  # обычно быстрее, чем полное перенасыщение CPU рабочими потоками.
+  cpu_threads: 4
   # Анализ заполняет этот буфер, а интерфейс воспроизводит результат с ровным FPS.
   preview_buffer_seconds: 10.0
   playback_fps: 30.0
+  # Предпросмотр легче итогового видео, чтобы UI не тормозил на больших кадрах.
+  preview_width: 1024
+  preview_jpeg_quality: 75
 
 counting:
   # Доступные режимы: all, cars, two_wheelers, heavy.
