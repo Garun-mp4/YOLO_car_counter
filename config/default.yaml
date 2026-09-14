@@ -1,0 +1,38 @@
+model: yolo26n.pt
+video: car_traffic_video/car_traffic.mp4
+output_dir: outputs
+
+# Группы стандартных классов COCO, которые есть у yolo26n.pt.
+# Отдельного класса "мопед" у базовой модели нет: он относится к motorcycle.
+modes:
+  all:
+    - bicycle
+    - car
+    - motorcycle
+    - bus
+    - truck
+  cars:
+    - car
+  two_wheelers:
+    - bicycle
+    - motorcycle
+  heavy:
+    - bus
+    - truck
+
+runtime:
+  tracker: bytetrack.yaml
+  confidence: 0.25
+  iou: 0.70
+  image_size: 640
+  device: auto
+
+counting:
+  # Доступные режимы: all, cars, two_wheelers, heavy.
+  mode: cars
+  direction: down
+  # Координаты задаются как доля высоты кадра: 0.30 = 30% от верха.
+  start_line_y: 0.30
+  finish_line_y: 0.75
+  show_window: false
+

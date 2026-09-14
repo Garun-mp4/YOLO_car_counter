@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yolo-car-counter"
+version = "0.1.0"
+description = "Count vehicles crossing a pair of virtual lines in a video with YOLO and ByteTrack."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ultralytics>=8.4.0,<9.0.0",
+    "opencv-python>=4.8.0,<5.0.0",
+    "PyYAML>=6.0,<7.0",
+]
+
+[project.scripts]
+yolo-car-counter = "yolo_car_counter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
