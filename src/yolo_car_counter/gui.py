@@ -6,8 +6,9 @@ import argparse
 import math
 import os
 import threading
-import time
+from dataclasses import dataclass
 from pathlib import Path
+from queue import Empty, Full, Queue
 from typing import Any, Sequence
 
 import cv2
@@ -44,48 +45,62 @@ class FrameImageProvider(QQuickImageProvider):
         return image
 
 
-class PreviewPacer:
-    """Keep preview frames from being emitted in bursts when inference is fast."""
+@dataclass(frozen=True)
+class PreviewPacket:
+    """One annotated frame and the counts visible at that point in the video."""
 
-    def __init__(self, target_fps: float = 30.0) -> None:
-        if not math.isfinite(target_fps) or target_fps <= 0:
-            raise ValueError("target_fps должен быть положительным числом")
-        self._interval = 1.0 / target_fps
-        self._next_deadline: float | None = None
+    jpeg: bytes
+    frame_index: int
+    total_count: int
+    class_counts: dict[str, int]
 
-    def delay_for(self, now: float) -> float:
-        """Return the delay required before the next preview frame."""
 
-        if not math.isfinite(now):
-            raise ValueError("now должен быть конечным числом")
-        if self._next_deadline is None:
-            self._next_deadline = now
+class PreviewBuffer:
+    """Bounded producer/consumer buffer between inference and playback."""
 
-        delay = max(0.0, self._next_deadline - now)
-        self._next_deadline += self._interval
+    def __init__(self, capacity: int) -> None:
+        if capacity < 1:
+            raise ValueError("capacity должен быть положительным")
+        self._queue: Queue[PreviewPacket] = Queue(maxsize=capacity)
 
-        # If inference took longer than one or more display intervals, restart
-        # from the current time instead of emitting a catch-up burst.
-        if self._next_deadline <= now:
-            self._next_deadline = now + self._interval
-        return delay
+    def put(self, packet: PreviewPacket, stop_event: threading.Event) -> bool:
+        """Put a packet, applying backpressure without blocking shutdown forever."""
+
+        while not stop_event.is_set():
+            try:
+                self._queue.put(packet, timeout=0.1)
+                return True
+            except Full:
+                continue
+        return False
+
+    def get_nowait(self) -> PreviewPacket | None:
+        try:
+            return self._queue.get_nowait()
+        except Empty:
+            return None
+
+    def clear(self) -> None:
+        while self.get_nowait() is not None:
+            pass
+
+    @property
+    def size(self) -> int:
+        return self._queue.qsize()
 
 
 class AnalysisWorker(QObject):
     """Run the blocking OpenCV/YOLO pipeline outside the Qt GUI thread."""
 
-    frameReady = Signal(bytes)
     progressChanged = Signal(int, int)
-    statsChanged = Signal(int, object)
     finished = Signal(object)
     failed = Signal(str)
 
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(self, config: AppConfig, preview_buffer: PreviewBuffer) -> None:
         super().__init__()
         self.config = config
+        self.preview_buffer = preview_buffer
         self._stop_event = threading.Event()
-        self._last_stats: tuple[int, tuple[tuple[str, int], ...]] | None = None
-        self._preview_pacer = PreviewPacer()
 
     def request_stop(self) -> None:
         """Set the stop flag; this method is safe to call from the GUI thread."""
@@ -107,11 +122,6 @@ class AnalysisWorker(QObject):
             self.finished.emit(result)
 
     def _on_frame(self, frame: Any, frame_index: int, counter: LineCrossingCounter) -> None:
-        del frame_index
-        delay = self._preview_pacer.delay_for(time.monotonic())
-        if delay > 0 and self._stop_event.wait(delay):
-            return
-
         preview = frame
         frame_height, frame_width = frame.shape[:2]
         if frame_width > 1280:
@@ -126,13 +136,13 @@ class AnalysisWorker(QObject):
         )
         if not encoded_ok:
             raise RuntimeError("Не удалось подготовить кадр для предпросмотра")
-        self.frameReady.emit(encoded.tobytes())
-
-        class_counts = counter.class_counts
-        snapshot = (counter.total_count, tuple(sorted(class_counts.items())))
-        if snapshot != self._last_stats:
-            self._last_stats = snapshot
-            self.statsChanged.emit(counter.total_count, class_counts)
+        packet = PreviewPacket(
+            jpeg=encoded.tobytes(),
+            frame_index=frame_index,
+            total_count=counter.total_count,
+            class_counts=dict(counter.class_counts),
+        )
+        self.preview_buffer.put(packet, self._stop_event)
 
     def _on_progress(self, frame_index: int, frame_count_hint: int) -> None:
         self.progressChanged.emit(frame_index, frame_count_hint)
@@ -157,8 +167,8 @@ class AnalysisController(QObject):
     totalFramesChanged = Signal()
     progressChanged = Signal()
     progressTextChanged = Signal()
-    startLinePercentChanged = Signal()
     finishLinePercentChanged = Signal()
+    bufferedSecondsChanged = Signal()
     outputVideoPathChanged = Signal()
     outputDirPathChanged = Signal()
 
@@ -183,7 +193,7 @@ class AnalysisController(QObject):
             self._startup_error = str(exc)
 
         default_video = self._base_config.video if self._base_config else self.project_root / "car_traffic_video" / "car_traffic.mp4"
-        default_model = self._base_config.model if self._base_config else self.project_root / "yolo26n.pt"
+        default_model = self._base_config.model if self._base_config else self.project_root / "YOLO-models" / "yolo26s.pt"
         default_output = self.project_root / "outputs" / "gui"
 
         self._video_path = str(Path(video).expanduser() if video else default_video)
@@ -191,8 +201,7 @@ class AnalysisController(QObject):
         self._mode = mode.strip().lower() or "all"
         self._mode_groups = dict(self._base_config.mode_groups) if self._base_config else dict(DEFAULT_MODES)
         self._max_frames = max_frames
-        self._start_line_percent = self._base_config.start_line_y * 100 if self._base_config else 30.0
-        self._finish_line_percent = self._base_config.finish_line_y * 100 if self._base_config else 75.0
+        self._finish_line_percent = self._base_config.finish_line_y * 100 if self._base_config else 90.0
 
         self._status_text = "ГОТОВ"
         self._error_text = self._startup_error
@@ -213,6 +222,16 @@ class AnalysisController(QObject):
         self._thread: QThread | None = None
         self._worker: AnalysisWorker | None = None
         self._frame_provider: FrameImageProvider | None = None
+        playback_fps = self._base_config.playback_fps if self._base_config else 30.0
+        buffer_seconds = self._base_config.preview_buffer_seconds if self._base_config else 10.0
+        self._playback_fps = playback_fps
+        self._preview_buffer = PreviewBuffer(max(1, round(playback_fps * buffer_seconds)))
+        self._playback_timer = QTimer(self)
+        self._playback_timer.setInterval(max(1, round(1000 / playback_fps)))
+        self._playback_timer.timeout.connect(self._playback_tick)
+        self._analysis_result: VideoRunResult | None = None
+        self._analysis_finished = False
+        self._buffered_seconds = 0.0
 
     def set_frame_provider(self, provider: FrameImageProvider) -> None:
         self._frame_provider = provider
@@ -281,13 +300,13 @@ class AnalysisController(QObject):
     def progressText(self) -> str:  # noqa: N802
         return self._progress_text
 
-    @Property(float, notify=startLinePercentChanged)
-    def startLinePercent(self) -> float:  # noqa: N802
-        return self._start_line_percent
-
     @Property(float, notify=finishLinePercentChanged)
     def finishLinePercent(self) -> float:  # noqa: N802
         return self._finish_line_percent
+
+    @Property(float, notify=bufferedSecondsChanged)
+    def bufferedSeconds(self) -> float:  # noqa: N802
+        return self._buffered_seconds
 
     @Property(str, notify=outputVideoPathChanged)
     def outputVideoPath(self) -> str:  # noqa: N802
@@ -346,19 +365,10 @@ class AnalysisController(QObject):
             self.setModelPath(path)
 
     @Slot(float)
-    def setStartLinePercent(self, value: float) -> None:  # noqa: N802
-        if not math.isfinite(value):
-            return
-        bounded = max(5.0, min(float(value), self._finish_line_percent - 5.0))
-        if bounded != self._start_line_percent:
-            self._start_line_percent = bounded
-            self.startLinePercentChanged.emit()
-
-    @Slot(float)
     def setFinishLinePercent(self, value: float) -> None:  # noqa: N802
         if not math.isfinite(value):
             return
-        bounded = min(95.0, max(float(value), self._start_line_percent + 5.0))
+        bounded = min(97.0, max(float(value), 70.0))
         if bounded != self._finish_line_percent:
             self._finish_line_percent = bounded
             self.finishLinePercentChanged.emit()
@@ -377,7 +387,6 @@ class AnalysisController(QObject):
                     "model": self._model_path,
                     "output_dir": self._output_dir_path,
                     "mode": self._mode,
-                    "start_line_y": self._start_line_percent / 100,
                     "finish_line_y": self._finish_line_percent / 100,
                     "show_window": False,
                     "max_frames": self._max_frames,
@@ -395,16 +404,21 @@ class AnalysisController(QObject):
         self._set_error("")
         self._set_status("АНАЛИЗИРУЕМ")
         self._set_running(True)
+        self._preview_buffer.clear()
+        self._playback_fps = config.playback_fps
+        self._playback_timer.setInterval(max(1, round(1000 / self._playback_fps)))
+        self._analysis_result = None
+        self._analysis_finished = False
+        self._set_buffered_seconds(0.0)
+        self._playback_timer.start()
 
         thread = QThread()
-        worker = AnalysisWorker(config)
+        worker = AnalysisWorker(config, self._preview_buffer)
         self._thread = thread
         self._worker = worker
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.frameReady.connect(self._on_frame_ready)
         worker.progressChanged.connect(self._on_progress)
-        worker.statsChanged.connect(self._on_stats)
         worker.finished.connect(self._on_finished)
         worker.failed.connect(self._on_failed)
         worker.finished.connect(thread.quit)
@@ -415,10 +429,15 @@ class AnalysisController(QObject):
 
     @Slot()
     def stopAnalysis(self) -> None:  # noqa: N802
-        if self._running and self._worker is not None:
+        if self._running:
             self._stop_requested = True
             self._set_status("ОСТАНАВЛИВАЕМ")
-            self._worker.request_stop()
+            if self._worker is not None:
+                self._worker.request_stop()
+            self._preview_buffer.clear()
+            self._playback_timer.stop()
+            if self._analysis_finished:
+                self._finish_playback()
 
     @Slot()
     def resetSession(self) -> None:  # noqa: N802
@@ -432,6 +451,10 @@ class AnalysisController(QObject):
         self._set_progress(0.0)
         self._set_progress_text("Ожидание видео")
         self._set_has_frame(False)
+        self._preview_buffer.clear()
+        self._analysis_result = None
+        self._analysis_finished = False
+        self._set_buffered_seconds(0.0)
 
     @Slot()
     def openOutputFolder(self) -> None:  # noqa: N802
@@ -441,21 +464,31 @@ class AnalysisController(QObject):
 
     @Slot()
     def shutdown(self) -> None:
+        self._playback_timer.stop()
+        self._preview_buffer.clear()
         if self._worker is not None:
             self._worker.request_stop()
         if self._thread is not None and self._thread.isRunning():
             self._thread.wait(5000)
 
-    @Slot(bytes)
-    def _on_frame_ready(self, data: bytes) -> None:
-        if self._frame_provider is None:
-            return
-        image = QImage.fromData(data, "JPG").copy()
-        if not image.isNull():
-            self._frame_provider.set_image(image)
-            self._frame_revision += 1
-            self.frameRevisionChanged.emit()
-            self._set_has_frame(True)
+    @Slot()
+    def _playback_tick(self) -> None:
+        packet = self._preview_buffer.get_nowait()
+        if packet is not None:
+            self._show_packet(packet)
+        self._set_buffered_seconds(self._preview_buffer.size / self._playback_fps)
+        if self._analysis_finished and self._preview_buffer.size == 0:
+            self._finish_playback()
+
+    def _show_packet(self, packet: PreviewPacket) -> None:
+        if self._frame_provider is not None:
+            image = QImage.fromData(packet.jpeg, "JPG").copy()
+            if not image.isNull():
+                self._frame_provider.set_image(image)
+                self._frame_revision += 1
+                self.frameRevisionChanged.emit()
+                self._set_has_frame(True)
+        self._on_stats(packet.total_count, packet.class_counts)
 
     @Slot(int, int)
     def _on_progress(self, processed: int, total: int) -> None:
@@ -484,20 +517,27 @@ class AnalysisController(QObject):
         if not isinstance(result, VideoRunResult):
             self._on_failed("Анализ завершился с некорректным результатом")
             return
-        self._on_stats(result.total_count, result.class_counts)
+        self._analysis_result = result
+        self._analysis_finished = True
         self._processed_frames = result.frames_processed
         self.processedFramesChanged.emit()
         if self._total_frames <= 0:
             self._total_frames = result.frames_processed
             self.totalFramesChanged.emit()
         self._set_progress(1.0)
-        self._set_progress_text(f"{result.frames_processed:,} кадров обработано".replace(",", " "))
+        self._set_progress_text("Анализ завершён · воспроизведение результата")
         self._output_video_path = str(result.annotated_video)
         self.outputVideoPathChanged.emit()
-        self._set_status("ОСТАНОВЛЕНО" if self._stop_requested else "ГОТОВО")
+        self._set_status("ВОСПРОИЗВОДИМ")
+        if self._preview_buffer.size == 0:
+            self._finish_playback()
 
     @Slot(str)
     def _on_failed(self, message: str) -> None:
+        self._analysis_finished = True
+        self._playback_timer.stop()
+        self._preview_buffer.clear()
+        self._set_buffered_seconds(0.0)
         self._set_error(message or "Неизвестная ошибка анализа")
         self._set_status("ОШИБКА")
 
@@ -505,6 +545,17 @@ class AnalysisController(QObject):
     def _on_thread_finished(self) -> None:
         self._thread = None
         self._worker = None
+        if self._error_text:
+            self._set_running(False)
+
+    def _finish_playback(self) -> None:
+        if not self._analysis_finished:
+            return
+        self._playback_timer.stop()
+        self._set_buffered_seconds(0.0)
+        if self._analysis_result is not None:
+            self._on_stats(self._analysis_result.total_count, self._analysis_result.class_counts)
+            self._set_status("ОСТАНОВЛЕНО" if self._stop_requested else "ГОТОВО")
         self._set_running(False)
 
     def _reset_counts(self) -> None:
@@ -533,6 +584,11 @@ class AnalysisController(QObject):
         if value != self._running:
             self._running = value
             self.runningChanged.emit()
+
+    def _set_buffered_seconds(self, value: float) -> None:
+        if abs(value - self._buffered_seconds) > 0.05:
+            self._buffered_seconds = value
+            self.bufferedSecondsChanged.emit()
 
     def _set_status(self, value: str) -> None:
         if value != self._status_text:

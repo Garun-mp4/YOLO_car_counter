@@ -180,7 +180,7 @@ ApplicationWindow {
                         color: theme.hairline
                     }
                     Text {
-                        text: "YOLO26N"
+                        text: "YOLO26"
                         color: theme.muted
                         font.family: theme.monoFont
                         font.pixelSize: 9
@@ -292,7 +292,7 @@ ApplicationWindow {
                                 }
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Выберите режим и источник. Уникальный трек считается после пересечения START и FINISH."
+                                    text: "Выберите режим и источник. Машина учитывается у нижней линии или при подтверждённом выходе из кадра."
                                     color: theme.slate
                                     font.family: theme.sansFont
                                     font.pixelSize: 13
@@ -620,7 +620,7 @@ ApplicationWindow {
 
                             Rectangle {
                                 width: app.mobile ? settingsScroll.width - 40 : (settingsScroll.width - 64 - settingsPanels.spacing) / 2
-                                height: app.mobile ? 278 : 246
+                                height: app.mobile ? 218 : 196
                                 color: theme.canvas
                                 border.color: theme.hairline
                                 border.width: 1
@@ -725,7 +725,7 @@ ApplicationWindow {
                                     }
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "Трек попадает в итог, если его центр пересекает START, затем FINISH."
+                                        text: "Используется одна линия у нижнего края. Потерянный рядом трек засчитывается только при подтверждённом движении к выходу."
                                         color: theme.slate
                                         font.family: theme.sansFont
                                         font.pixelSize: 11
@@ -733,58 +733,28 @@ ApplicationWindow {
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        Layout.topMargin: 4
-                                        spacing: 12
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 5
-                                            Text { text: "START · от верхнего края"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 11; elide: Text.ElideRight }
-                                            RowLayout {
-                                                spacing: 5
-                                                TextField {
-                                                    id: startLineField
-                                                    Layout.preferredWidth: 60
-                                                    Layout.preferredHeight: 36
-                                                    text: Math.round(app.backendObject.startLinePercent).toString()
-                                                    selectByMouse: true
-                                                    color: theme.ink
-                                                    font.family: theme.monoFont
-                                                    font.pixelSize: 12
-                                                    horizontalAlignment: Text.AlignRight
-                                                    validator: DoubleValidator { bottom: 5; top: 90; decimals: 1 }
-                                                    onEditingFinished: app.backendObject.setStartLinePercent(Number(text))
-                                                    background: Rectangle { radius: theme.radiusSmall; color: theme.canvas; border.color: startLineField.activeFocus ? theme.deepGreen : theme.border; border.width: startLineField.activeFocus ? 2 : 1 }
-                                                }
-                                                Text { text: "%"; color: theme.deepGreen; font.family: theme.monoFont; font.pixelSize: 12 }
-                                            }
+                                        Layout.topMargin: 8
+                                        spacing: 6
+                                        Text { text: "Линия подсчёта"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 11 }
+                                        TextField {
+                                            id: finishLineField
+                                            Layout.preferredWidth: 64
+                                            Layout.preferredHeight: 36
+                                            text: Math.round(app.backendObject.finishLinePercent).toString()
+                                            selectByMouse: true
+                                            color: theme.ink
+                                            font.family: theme.monoFont
+                                            font.pixelSize: 12
+                                            horizontalAlignment: Text.AlignRight
+                                            validator: DoubleValidator { bottom: 70; top: 97; decimals: 1 }
+                                            onEditingFinished: app.backendObject.setFinishLinePercent(Number(text))
+                                            background: Rectangle { radius: theme.radiusSmall; color: theme.canvas; border.color: finishLineField.activeFocus ? theme.deepGreen : theme.border; border.width: finishLineField.activeFocus ? 2 : 1 }
                                         }
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 5
-                                            Text { text: "FINISH · к нижнему краю"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 11; elide: Text.ElideRight }
-                                            RowLayout {
-                                                spacing: 5
-                                                TextField {
-                                                    id: finishLineField
-                                                    Layout.preferredWidth: 60
-                                                    Layout.preferredHeight: 36
-                                                    text: Math.round(app.backendObject.finishLinePercent).toString()
-                                                    selectByMouse: true
-                                                    color: theme.ink
-                                                    font.family: theme.monoFont
-                                                    font.pixelSize: 12
-                                                    horizontalAlignment: Text.AlignRight
-                                                    validator: DoubleValidator { bottom: 10; top: 95; decimals: 1 }
-                                                    onEditingFinished: app.backendObject.setFinishLinePercent(Number(text))
-                                                    background: Rectangle { radius: theme.radiusSmall; color: theme.canvas; border.color: finishLineField.activeFocus ? theme.deepGreen : theme.border; border.width: finishLineField.activeFocus ? 2 : 1 }
-                                                }
-                                                Text { text: "%"; color: theme.deepGreen; font.family: theme.monoFont; font.pixelSize: 12 }
-                                            }
-                                        }
+                                        Text { text: "% от верхнего края"; color: theme.deepGreen; font.family: theme.monoFont; font.pixelSize: 11 }
                                     }
                                     Item { Layout.fillHeight: true }
                                     Text {
-                                        text: "START " + Math.round(app.backendObject.startLinePercent) + "%   →   FINISH " + Math.round(app.backendObject.finishLinePercent) + "%"
+                                        text: "ЛИНИЯ " + Math.round(app.backendObject.finishLinePercent) + "%   ·   ПРОГНОЗ ВЫХОДА ВКЛЮЧЁН"
                                         color: theme.deepGreen
                                         font.family: theme.monoFont
                                         font.pixelSize: 10

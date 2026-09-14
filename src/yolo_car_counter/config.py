@@ -38,9 +38,14 @@ class AppConfig:
     target_classes: tuple[str, ...]
     mode_groups: dict[str, tuple[str, ...]]
     direction: str
-    start_line_y: float
     finish_line_y: float
+    exit_margin_y: float
+    max_missing_frames: int
+    min_track_observations: int
+    min_motion_y: float
     show_window: bool
+    preview_buffer_seconds: float
+    playback_fps: float
     max_frames: int | None = None
 
 
@@ -137,7 +142,7 @@ def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any]
         available_modes = ", ".join(sorted(modes))
         raise ConfigError(f"Неизвестный режим {selected_mode}. Доступные режимы: {available_modes}")
 
-    model_value = value_from(data, "model", "yolo26n.pt")
+    model_value = value_from(data, "model", "YOLO-models/yolo26s.pt")
     video_value = value_from(data, "video", "car_traffic_video/car_traffic.mp4")
     output_value = value_from(data, "output_dir", "outputs")
 
@@ -148,9 +153,17 @@ def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any]
     device = _normalize_device(value_from(runtime, "device", "auto"))
 
     direction = str(value_from(counting, "direction", "down")).lower()
-    start_line_y = _as_float(value_from(counting, "start_line_y", 0.30), "counting.start_line_y")
-    finish_line_y = _as_float(value_from(counting, "finish_line_y", 0.75), "counting.finish_line_y")
+    finish_line_y = _as_float(value_from(counting, "finish_line_y", 0.90), "counting.finish_line_y")
+    exit_margin_y = _as_float(value_from(counting, "exit_margin_y", 0.06), "counting.exit_margin_y")
+    max_missing_frames = int(value_from(counting, "max_missing_frames", 8))
+    min_track_observations = int(value_from(counting, "min_track_observations", 3))
+    min_motion_y = _as_float(value_from(counting, "min_motion_y", 0.01), "counting.min_motion_y")
     show_window = bool(value_from(counting, "show_window", False))
+    preview_buffer_seconds = _as_float(
+        value_from(runtime, "preview_buffer_seconds", 10.0),
+        "runtime.preview_buffer_seconds",
+    )
+    playback_fps = _as_float(value_from(runtime, "playback_fps", 30.0), "runtime.playback_fps")
     max_frames_value = value_from(data, "max_frames", None)
     max_frames = None if max_frames_value in (None, "") else int(max_frames_value)
 
@@ -162,12 +175,20 @@ def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any]
         raise ConfigError("runtime.image_size должен быть положительным")
     if direction not in {"down", "up"}:
         raise ConfigError("counting.direction должен быть down или up")
-    if not 0 < start_line_y < 1 or not 0 < finish_line_y < 1:
-        raise ConfigError("Линии должны быть в диапазоне (0, 1)")
-    if direction == "down" and start_line_y >= finish_line_y:
-        raise ConfigError("Для движения down начальная линия должна быть выше конечной")
-    if direction == "up" and start_line_y <= finish_line_y:
-        raise ConfigError("Для движения up начальная линия должна быть ниже конечной")
+    if not 0 < finish_line_y < 1:
+        raise ConfigError("counting.finish_line_y должен быть в диапазоне (0, 1)")
+    if not 0 <= exit_margin_y < 0.5:
+        raise ConfigError("counting.exit_margin_y должен быть в диапазоне [0, 0.5)")
+    if max_missing_frames < 1:
+        raise ConfigError("counting.max_missing_frames должен быть положительным")
+    if min_track_observations < 1:
+        raise ConfigError("counting.min_track_observations должен быть положительным")
+    if not 0 <= min_motion_y < 1:
+        raise ConfigError("counting.min_motion_y должен быть в диапазоне [0, 1)")
+    if preview_buffer_seconds <= 0:
+        raise ConfigError("runtime.preview_buffer_seconds должен быть положительным")
+    if playback_fps <= 0:
+        raise ConfigError("runtime.playback_fps должен быть положительным")
     if max_frames is not None and max_frames <= 0:
         raise ConfigError("max_frames должен быть положительным")
 
@@ -185,8 +206,13 @@ def load_config(config_path: Path, project_root: Path, overrides: dict[str, Any]
         target_classes=target_classes,
         mode_groups=modes,
         direction=direction,
-        start_line_y=start_line_y,
         finish_line_y=finish_line_y,
+        exit_margin_y=exit_margin_y,
+        max_missing_frames=max_missing_frames,
+        min_track_observations=min_track_observations,
+        min_motion_y=min_motion_y,
         show_window=show_window,
+        preview_buffer_seconds=preview_buffer_seconds,
+        playback_fps=playback_fps,
         max_frames=max_frames,
     )

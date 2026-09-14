@@ -48,7 +48,7 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 Text {
-                    text: "YOLO26N  ·  TRACKING"
+                    text: "YOLO  ·  TRACKING"
                     color: "#8faeab"
                     font.family: root.theme.monoFont
                     font.pixelSize: 9
@@ -58,7 +58,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: "START " + Math.round(root.backend.startLinePercent) + "%   ·   FINISH " + Math.round(root.backend.finishLinePercent) + "%"
+                text: "ЛИНИЯ ПОДСЧЁТА " + Math.round(root.backend.finishLinePercent) + "%  ·  ВЫХОД ИЗ КАДРА УЧИТЫВАЕТСЯ"
                 color: "#8faeab"
                 font.family: root.theme.monoFont
                 font.pixelSize: 8

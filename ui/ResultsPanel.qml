@@ -94,7 +94,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: root.backend.running ? "Счётчик обновляется по мере пересечения FINISH." : "Учитываются уникальные треки, прошедшие START и FINISH."
+                text: root.backend.running ? "Счётчик синхронизирован с воспроизведением результата." : "Учитываются траектории, достигшие линии или вышедшие из нижней зоны кадра."
                 color: root.theme.slate
                 font.family: root.theme.sansFont
                 font.pixelSize: 11

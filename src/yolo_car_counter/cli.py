@@ -16,7 +16,7 @@ def _project_root() -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Подсчёт транспорта, пересекающего участок дороги, с помощью YOLO и ByteTrack."
+        description="Подсчёт транспорта, достигающего контрольной линии, с помощью YOLO и ByteTrack."
     )
     parser.add_argument(
         "--config",
@@ -38,8 +38,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--iou", type=float, help="Порог IoU.")
     parser.add_argument("--image-size", type=int, help="Размер изображения для инференса.")
     parser.add_argument("--device", help="Устройство: auto, cpu или номер CUDA-устройства.")
-    parser.add_argument("--start-line", type=float, help="Начальная линия как доля высоты кадра.")
-    parser.add_argument("--finish-line", type=float, help="Конечная линия как доля высоты кадра.")
+    parser.add_argument("--finish-line", type=float, help="Линия подсчёта как доля высоты кадра.")
+    parser.add_argument("--exit-margin", type=float, help="Допуск прогноза выхода как доля высоты кадра.")
+    parser.add_argument("--max-missing-frames", type=int, help="Сколько кадров ждать потерянный трек.")
+    parser.add_argument("--min-track-observations", type=int, help="Минимум наблюдений до подсчёта.")
+    parser.add_argument("--min-motion", type=float, help="Минимальное движение трека как доля высоты кадра.")
     parser.add_argument("--show", action="store_true", help="Показывать окно обработки в реальном времени.")
     parser.add_argument("--max-frames", type=int, help="Ограничить число кадров для короткого теста.")
     return parser
@@ -63,8 +66,11 @@ def main(argv: list[str] | None = None) -> int:
         ("iou", "iou"),
         ("image_size", "image_size"),
         ("device", "device"),
-        ("start_line", "start_line_y"),
         ("finish_line", "finish_line_y"),
+        ("exit_margin", "exit_margin_y"),
+        ("max_missing_frames", "max_missing_frames"),
+        ("min_track_observations", "min_track_observations"),
+        ("min_motion", "min_motion_y"),
         ("max_frames", "max_frames"),
     ):
         value = getattr(args, argument_name)
@@ -88,4 +94,3 @@ def main(argv: list[str] | None = None) -> int:
     print(f"События: {result.events_csv}")
     print(f"Сводка: {result.summary_json}")
     return 0
-

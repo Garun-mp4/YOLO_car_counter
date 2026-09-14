@@ -78,9 +78,12 @@ class TrafficVideoProcessor:
             raise RuntimeError(f"Не удалось создать выходное видео: {output_paths['video']}")
 
         counter = LineCrossingCounter(
-            start_line_y=self.config.start_line_y * height,
             finish_line_y=self.config.finish_line_y * height,
             direction=self.config.direction,
+            max_missing_frames=self.config.max_missing_frames,
+            min_track_observations=self.config.min_track_observations,
+            exit_margin_y=self.config.exit_margin_y * height,
+            min_motion_y=self.config.min_motion_y * height,
         )
         frame_index = 0
         stopped_by_user = False
@@ -126,6 +129,7 @@ class TrafficVideoProcessor:
             if self.config.show_window:
                 cv2.destroyAllWindows()
 
+        counter.finalize(frame_index, frame_index / fps if fps else 0.0)
         if progress_callback is None:
             print()
         events = counter.events
@@ -243,21 +247,18 @@ class TrafficVideoProcessor:
         height: int,
     ) -> Any:
         annotated = frame.copy()
-        start_y = int(self.config.start_line_y * height)
         finish_y = int(self.config.finish_line_y * height)
-        line_color = (0, 200, 255)
         line_overlay = annotated.copy()
-        cv2.line(line_overlay, (0, start_y), (annotated.shape[1], start_y), line_color, 2)
         cv2.line(line_overlay, (0, finish_y), (annotated.shape[1], finish_y), (0, 0, 255), 2)
         cv2.addWeighted(line_overlay, 0.42, annotated, 0.58, 0, annotated)
-        self._put_text(annotated, "START", (10, max(start_y - 8, 20)), line_color)
-        self._put_text(annotated, "FINISH", (10, max(finish_y - 8, 20)), (0, 0, 255))
+        self._put_text(annotated, "COUNT LINE", (10, max(finish_y - 8, 20)), (0, 0, 255))
 
         for detection in detections:
             x1, y1, x2, y2 = map(int, (detection.x1, detection.y1, detection.x2, detection.y2))
             color = (0, 220, 0) if counter.is_counted(detection.track_id) else (255, 120, 0)
             cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
-            label = f"ID {detection.track_id} {detection.class_name} {detection.confidence:.2f}"
+            class_name = counter.class_name_for(detection.track_id) or detection.class_name
+            label = f"ID {detection.track_id} {class_name} {detection.confidence:.2f}"
             self._put_text(annotated, label, (x1, max(y1 - 8, 20)), color)
 
         self._put_text(
@@ -302,6 +303,7 @@ class TrafficVideoProcessor:
                     "frame_index",
                     "timestamp_seconds",
                     "direction",
+                    "reason",
                 ],
             )
             writer.writeheader()
@@ -323,8 +325,11 @@ class TrafficVideoProcessor:
             "mode": self.config.mode,
             "target_classes": list(self.config.target_classes),
             "direction": self.config.direction,
-            "start_line_y": self.config.start_line_y,
             "finish_line_y": self.config.finish_line_y,
+            "exit_margin_y": self.config.exit_margin_y,
+            "max_missing_frames": self.config.max_missing_frames,
+            "min_track_observations": self.config.min_track_observations,
+            "min_motion_y": self.config.min_motion_y,
             "confidence": self.config.confidence,
             "iou": self.config.iou,
             "image_size": self.config.image_size,

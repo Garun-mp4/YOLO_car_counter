@@ -1,20 +1,35 @@
-import pytest
+from threading import Event
 
-from yolo_car_counter.gui import PreviewPacer
-
-
-def test_preview_pacer_limits_fast_frame_bursts() -> None:
-    pacer = PreviewPacer(target_fps=30.0)
-
-    assert pacer.delay_for(10.0) == pytest.approx(0.0)
-    assert pacer.delay_for(10.001) == pytest.approx((1 / 30.0) - 0.001)
+from yolo_car_counter.gui import PreviewBuffer, PreviewPacket
 
 
-def test_preview_pacer_recovers_after_slow_inference_without_burst() -> None:
-    pacer = PreviewPacer(target_fps=30.0)
+def packet(frame_index: int) -> PreviewPacket:
+    return PreviewPacket(
+        jpeg=f"frame-{frame_index}".encode(),
+        frame_index=frame_index,
+        total_count=frame_index,
+        class_counts={"car": frame_index},
+    )
 
-    pacer.delay_for(10.0)
-    pacer.delay_for(10.001)
 
-    assert pacer.delay_for(10.5) == pytest.approx(0.0)
-    assert pacer.delay_for(10.501) == pytest.approx((1 / 30.0) - 0.001)
+def test_preview_buffer_preserves_frame_order() -> None:
+    buffer = PreviewBuffer(capacity=2)
+    stop_event = Event()
+
+    assert buffer.put(packet(1), stop_event)
+    assert buffer.put(packet(2), stop_event)
+    assert buffer.size == 2
+    assert buffer.get_nowait().frame_index == 1
+    assert buffer.get_nowait().frame_index == 2
+    assert buffer.get_nowait() is None
+
+
+def test_preview_buffer_stops_waiting_when_analysis_is_cancelled() -> None:
+    buffer = PreviewBuffer(capacity=1)
+    stop_event = Event()
+    assert buffer.put(packet(1), stop_event)
+
+    stop_event.set()
+
+    assert not buffer.put(packet(2), stop_event)
+    assert buffer.size == 1
