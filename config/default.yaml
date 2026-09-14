@@ -1,0 +1,47 @@
+model: YOLO-models/yolo26s.pt
+video: car_traffic_video/car_traffic.mp4
+output_dir: outputs
+
+# Группы стандартных классов COCO, которые есть у YOLO26.
+# Отдельного класса "мопед" у базовой модели нет: он относится к motorcycle.
+modes:
+  all:
+    - bicycle
+    - car
+    - motorcycle
+    - bus
+    - truck
+  cars:
+    - car
+  two_wheelers:
+    - bicycle
+    - motorcycle
+  heavy:
+    - bus
+    - truck
+
+runtime:
+  tracker: bytetrack.yaml
+  # Более высокий входной размер помогает небольшим и частично закрытым
+  # мотоциклам. Для GTX 1650 используется batch=1.
+  confidence: 0.18
+  iou: 0.70
+  image_size: 960
+  device: auto
+  # Анализ заполняет этот буфер, а интерфейс воспроизводит результат с ровным FPS.
+  preview_buffer_seconds: 10.0
+  playback_fps: 30.0
+
+counting:
+  # Доступные режимы: all, cars, two_wheelers, heavy.
+  mode: cars
+  direction: down
+  # Единственная линия подсчёта: 0.90 = 90% от верхнего края кадра.
+  finish_line_y: 0.90
+  # Допуск для прогноза пересечения, если трек потерян рядом с линией.
+  exit_margin_y: 0.10
+  # Дольше сохраняем короткую траекторию во время перекрытия грузовиком.
+  max_missing_frames: 15
+  min_track_observations: 3
+  min_motion_y: 0.01
+  show_window: false
