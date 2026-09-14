@@ -11,8 +11,11 @@ Button {
     property string indexLabel: "01"
 
     implicitHeight: 40
+    Layout.minimumWidth: compact ? 40 : 136
     hoverEnabled: true
     padding: 0
+    leftPadding: compact ? 4 : 12
+    rightPadding: compact ? 4 : 12
     Accessible.name: control.text
 
     contentItem: RowLayout {

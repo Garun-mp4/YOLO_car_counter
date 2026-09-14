@@ -117,6 +117,17 @@ def test_class_is_stabilized_by_weighted_track_history() -> None:
     assert counter.class_name_for(8) == "car"
 
 
+def test_class_can_change_after_sustained_new_evidence() -> None:
+    counter = LineCrossingCounter(finish_line_y=500, direction="down")
+
+    for frame_index, bottom_y in enumerate((120, 140, 160)):
+        counter.update([detection(9, bottom_y, "car", 0.8)], frame_index, float(frame_index))
+    for frame_index, bottom_y in enumerate((180, 200, 220), start=3):
+        counter.update([detection(9, bottom_y, "motorcycle", 0.8)], frame_index, float(frame_index))
+
+    assert counter.class_name_for(9) == "motorcycle"
+
+
 def test_aggregates_four_vehicle_families_for_dashboard() -> None:
     class_counts = {
         "car": 8,

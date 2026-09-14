@@ -24,10 +24,12 @@ ApplicationWindow {
     property bool hasVideo: app.backendObject && app.backendObject.videoPath && app.backendObject.videoPath.length > 0
 
     property var modeItems: [
-        { key: "all", label: "Весь поток", width: 104 },
-        { key: "cars", label: "Легковые", width: 96 },
-        { key: "two_wheelers", label: "Двухколёсные", width: 118 },
-        { key: "heavy", label: "Тяжёлый транспорт", width: 142 }
+        { key: "all", label: "Весь поток", minWidth: 104 },
+        { key: "cars", label: "Легковые", minWidth: 96 },
+        { key: "two_wheelers", label: "Двухколёсные", minWidth: 118 },
+        // The short filter label keeps the control row readable; the full
+        // category name remains in the results panel and exported summary.
+        { key: "heavy", label: "Тяжёлые", minWidth: 104 }
     ]
 
     function compactPath(path) {
@@ -64,10 +66,10 @@ ApplicationWindow {
 
     function pageDescription() {
         if (currentPage === 1)
-            return "Источник видео, модель и контрольные линии"
+            return "Источник, модель и линия подсчёта"
         if (currentPage === 2)
             return "Последний сохранённый запуск"
-        return "Подсчёт транспорта по пересечению контрольных линий"
+        return "Видео, режим и линия подсчёта"
     }
 
     function statusColor() {
@@ -88,17 +90,17 @@ ApplicationWindow {
             id: sideRail
             visible: !app.mobile
             Layout.fillHeight: true
-            Layout.preferredWidth: app.tablet ? 78 : 204
+            Layout.preferredWidth: app.tablet ? 80 : 208
             color: theme.canvas
             border.color: theme.hairline
             border.width: 1
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.leftMargin: app.tablet ? 12 : 20
-                anchors.rightMargin: app.tablet ? 12 : 20
-                anchors.topMargin: 22
-                anchors.bottomMargin: 20
+                anchors.leftMargin: app.tablet ? 16 : 24
+                anchors.rightMargin: app.tablet ? 16 : 24
+                anchors.topMargin: 24
+                anchors.bottomMargin: 24
                 spacing: 0
 
                 ColumnLayout {
@@ -172,7 +174,7 @@ ApplicationWindow {
                 ColumnLayout {
                     visible: !app.tablet
                     Layout.fillWidth: true
-                    spacing: 6
+                    spacing: 8
 
                     Rectangle {
                         Layout.fillWidth: true
@@ -211,8 +213,8 @@ ApplicationWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: app.mobile ? 18 : 28
-                    anchors.rightMargin: app.mobile ? 18 : 28
+                    anchors.leftMargin: app.mobile ? 16 : 24
+                    anchors.rightMargin: app.mobile ? 16 : 24
                     spacing: 16
 
                     ColumnLayout {
@@ -278,10 +280,10 @@ ApplicationWindow {
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: app.mobile ? 20 : 32
-                                anchors.rightMargin: app.mobile ? 20 : 32
-                                anchors.topMargin: app.mobile ? 24 : 28
-                                spacing: 5
+                                anchors.leftMargin: app.mobile ? 16 : 32
+                                anchors.rightMargin: app.mobile ? 16 : 32
+                                anchors.topMargin: 24
+                                spacing: 8
 
                                 Text {
                                     text: "Подсчёт транспорта"
@@ -292,7 +294,7 @@ ApplicationWindow {
                                 }
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "Выберите режим и источник. Машина учитывается у нижней линии или при подтверждённом выходе из кадра."
+                                    text: "Выберите источник и режим. Подсчёт — у нижней линии."
                                     color: theme.slate
                                     font.family: theme.sansFont
                                     font.pixelSize: 13
@@ -303,18 +305,18 @@ ApplicationWindow {
 
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: app.mobile ? 170 : 82
-                            anchors.leftMargin: app.mobile ? 20 : 32
-                            anchors.rightMargin: app.mobile ? 20 : 32
+                            Layout.preferredHeight: app.mobile ? 170 : (app.tablet ? 148 : 112)
+                            Layout.leftMargin: app.mobile ? 16 : 32
+                            Layout.rightMargin: app.mobile ? 16 : 32
 
                             RowLayout {
                                 anchors.fill: parent
-                                visible: !app.mobile
-                                spacing: 20
+                                visible: !app.mobile && !app.tablet
+                                spacing: 16
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    spacing: 7
+                                    spacing: 8
 
                                     Text {
                                         text: "Режим подсчёта"
@@ -325,14 +327,14 @@ ApplicationWindow {
                                     Flow {
                                         id: desktopModeFlow
                                         Layout.fillWidth: true
-                                        spacing: 7
+                                        spacing: 8
 
                                         Repeater {
                                             model: app.modeItems
                                             delegate: FilterButton {
                                                 id: desktopModeButton
                                                 theme: app.tokens
-                                                width: modelData.width
+                                                width: Math.max(modelData.minWidth, implicitWidth)
                                                 text: modelData.label
                                                 active: app.backendObject.selectedMode === modelData.key
                                                 enabled: !app.backendObject.running
@@ -343,13 +345,13 @@ ApplicationWindow {
                                 }
 
                                 ColumnLayout {
-                                    Layout.preferredWidth: app.tablet ? 360 : 430
-                                    Layout.maximumWidth: 460
-                                    spacing: 7
+                                    Layout.preferredWidth: 430
+                                    Layout.maximumWidth: 440
+                                    spacing: 8
 
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        spacing: 7
+                                        spacing: 8
 
                                         AppButton {
                                             id: desktopOpenVideoButton
@@ -401,7 +403,7 @@ ApplicationWindow {
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                visible: app.mobile
+                                visible: app.mobile || app.tablet
                                 spacing: 8
 
                                 Text {
@@ -413,13 +415,13 @@ ApplicationWindow {
                                 Flow {
                                     id: mobileModeFlow
                                     Layout.fillWidth: true
-                                    spacing: 6
+                                    spacing: 8
                                     Repeater {
                                         model: app.modeItems
                                         delegate: FilterButton {
                                             id: mobileModeButton
                                             theme: app.tokens
-                                            width: modelData.width
+                                            width: Math.max(modelData.minWidth, implicitWidth)
                                             text: modelData.label
                                             active: app.backendObject.selectedMode === modelData.key
                                             enabled: !app.backendObject.running
@@ -429,12 +431,12 @@ ApplicationWindow {
                                 }
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    spacing: 6
+                                    spacing: 8
                                     AppButton {
                                         id: mobileOpenVideoButton
                                         Layout.fillWidth: true
                                         theme: app.tokens
-                                        text: "Открыть видео"
+                                        text: app.mobile ? "Открыть" : "Открыть видео"
                                         compact: true
                                         variant: app.hasVideo ? "secondary" : "primary"
                                         enabled: !app.backendObject.running
@@ -444,7 +446,7 @@ ApplicationWindow {
                                         id: mobileStartButton
                                         Layout.fillWidth: true
                                         theme: app.tokens
-                                        text: "Начать анализ"
+                                        text: app.mobile ? "Запустить" : "Начать анализ"
                                         compact: true
                                         variant: app.hasVideo ? "primary" : "secondary"
                                         enabled: !app.backendObject.running && app.hasVideo
@@ -482,8 +484,8 @@ ApplicationWindow {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 20 : 32
-                            Layout.rightMargin: app.mobile ? 20 : 32
+                            Layout.leftMargin: app.mobile ? 16 : 32
+                            Layout.rightMargin: app.mobile ? 16 : 32
                             Layout.preferredHeight: 1
                             color: theme.hairline
                         }
@@ -495,8 +497,8 @@ ApplicationWindow {
                             Layout.preferredHeight: app.tablet ? 406 : 478
                             Layout.leftMargin: app.tablet ? 24 : 32
                             Layout.rightMargin: app.tablet ? 24 : 32
-                            Layout.topMargin: 18
-                            Layout.bottomMargin: 18
+                            Layout.topMargin: 16
+                            Layout.bottomMargin: 16
                             spacing: 16
 
                             LiveMedia {
@@ -523,11 +525,11 @@ ApplicationWindow {
                             id: mobileWorkArea
                             visible: app.mobile
                             Layout.fillWidth: true
-                            Layout.leftMargin: 20
-                            Layout.rightMargin: 20
-                            Layout.topMargin: 14
-                            Layout.bottomMargin: 14
-                            spacing: 12
+                            Layout.leftMargin: 16
+                            Layout.rightMargin: 16
+                            Layout.topMargin: 16
+                            Layout.bottomMargin: 16
+                            spacing: 16
 
                             LiveMedia {
                                 Layout.fillWidth: true
@@ -549,8 +551,8 @@ ApplicationWindow {
                         Rectangle {
                             id: errorBanner
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 20 : 32
-                            Layout.rightMargin: app.mobile ? 20 : 32
+                            Layout.leftMargin: app.mobile ? 16 : 32
+                            Layout.rightMargin: app.mobile ? 16 : 32
                             Layout.preferredHeight: app.backendObject.errorText.length > 0 ? errorCopy.implicitHeight + 24 : 0
                             visible: app.backendObject.errorText.length > 0
                             color: theme.errorSoft
@@ -590,10 +592,10 @@ ApplicationWindow {
                             Layout.preferredHeight: app.mobile ? 94 : 92
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: app.mobile ? 20 : 32
-                                anchors.rightMargin: app.mobile ? 20 : 32
+                                anchors.leftMargin: app.mobile ? 16 : 32
+                                anchors.rightMargin: app.mobile ? 16 : 32
                                 anchors.topMargin: 24
-                                spacing: 5
+                                spacing: 8
                                 Text {
                                     text: "Параметры запуска"
                                     color: theme.ink
@@ -614,8 +616,8 @@ ApplicationWindow {
                         Flow {
                             id: settingsPanels
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 20 : 32
-                            Layout.rightMargin: app.mobile ? 20 : 32
+                            Layout.leftMargin: app.mobile ? 16 : 32
+                            Layout.rightMargin: app.mobile ? 16 : 32
                             spacing: 16
 
                             Rectangle {
@@ -628,8 +630,8 @@ ApplicationWindow {
 
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: app.mobile ? 16 : 20
-                                    spacing: 10
+                                    anchors.margins: app.mobile ? 16 : 24
+                                    spacing: 8
                                     Text {
                                         text: "Источник и модель"
                                         color: theme.ink
@@ -646,7 +648,7 @@ ApplicationWindow {
                                     Text { text: "Видео"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        spacing: 7
+                                        spacing: 8
                                         TextField {
                                             id: settingsVideoField
                                             Layout.fillWidth: true
@@ -675,7 +677,7 @@ ApplicationWindow {
                                     Text { text: "Модель YOLO"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        spacing: 7
+                                        spacing: 8
                                         TextField {
                                             id: settingsModelField
                                             Layout.fillWidth: true
@@ -714,8 +716,8 @@ ApplicationWindow {
 
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: app.mobile ? 16 : 20
-                                    spacing: 10
+                                    anchors.margins: app.mobile ? 16 : 24
+                                    spacing: 8
                                     Text {
                                         text: "Контрольные линии"
                                         color: theme.ink
@@ -734,7 +736,7 @@ ApplicationWindow {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Layout.topMargin: 8
-                                        spacing: 6
+                                        spacing: 8
                                         Text { text: "Линия подсчёта"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 11 }
                                         TextField {
                                             id: finishLineField
@@ -765,8 +767,8 @@ ApplicationWindow {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 20 : 32
-                            Layout.rightMargin: app.mobile ? 20 : 32
+                            Layout.leftMargin: app.mobile ? 16 : 32
+                            Layout.rightMargin: app.mobile ? 16 : 32
                             Layout.topMargin: 16
                             Layout.preferredHeight: 76
                             color: theme.paleBlue
@@ -801,10 +803,10 @@ ApplicationWindow {
                             Layout.preferredHeight: app.mobile ? 94 : 92
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: app.mobile ? 20 : 32
-                                anchors.rightMargin: app.mobile ? 20 : 32
+                                anchors.leftMargin: app.mobile ? 16 : 32
+                                anchors.rightMargin: app.mobile ? 16 : 32
                                 anchors.topMargin: 24
-                                spacing: 5
+                                spacing: 8
                                 Text { text: "Результаты запуска"; color: theme.ink; font.family: theme.sansFont; font.pixelSize: app.mobile ? 27 : 32; font.weight: Font.Normal }
                                 Text { text: "Счётчики и путь к размеченному видео последнего завершённого анализа."; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 13; wrapMode: Text.WordWrap }
                             }
@@ -813,8 +815,8 @@ ApplicationWindow {
                         Flow {
                             id: resultPanels
                             Layout.fillWidth: true
-                            Layout.leftMargin: app.mobile ? 20 : 32
-                            Layout.rightMargin: app.mobile ? 20 : 32
+                            Layout.leftMargin: app.mobile ? 16 : 32
+                            Layout.rightMargin: app.mobile ? 16 : 32
                             spacing: 16
 
                             Rectangle {
@@ -850,10 +852,10 @@ ApplicationWindow {
 
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.leftMargin: app.mobile ? 18 : 22
-                                    anchors.rightMargin: app.mobile ? 18 : 22
-                                    anchors.topMargin: app.mobile ? 18 : 22
-                                    anchors.bottomMargin: app.mobile ? 12 : 16
+                                    anchors.leftMargin: app.mobile ? 16 : 24
+                                    anchors.rightMargin: app.mobile ? 16 : 24
+                                    anchors.topMargin: app.mobile ? 16 : 24
+                                    anchors.bottomMargin: app.mobile ? 16 : 16
                                     spacing: 0
                                     Text { text: "Сводка"; color: theme.deepGreen; font.family: theme.sansFont; font.pixelSize: 14; font.weight: Font.DemiBold }
                                     Text { Layout.topMargin: 16; text: "Всего прошло"; color: theme.slate; font.family: theme.sansFont; font.pixelSize: 12 }
@@ -882,9 +884,9 @@ ApplicationWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-                    spacing: 4
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 8
                     NavItem { Layout.fillWidth: true; theme: app.tokens; text: "Наблюдение"; indexLabel: "01"; compact: true; active: app.currentPage === 0; onClicked: app.currentPage = 0 }
                     NavItem { Layout.fillWidth: true; theme: app.tokens; text: "Настройки"; indexLabel: "02"; compact: true; active: app.currentPage === 1; onClicked: app.currentPage = 1 }
                     NavItem { Layout.fillWidth: true; theme: app.tokens; text: "Результаты"; indexLabel: "03"; compact: true; active: app.currentPage === 2; onClicked: app.currentPage = 2 }

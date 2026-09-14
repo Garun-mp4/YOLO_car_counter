@@ -10,11 +10,11 @@ def test_default_config_uses_passenger_cars_mode() -> None:
     assert config.mode == "cars"
     assert config.target_classes == ("car",)
     assert config.model == (project_root / "YOLO-models" / "yolo26s.pt").resolve()
-    assert config.confidence == 0.20
-    assert config.image_size == 768
+    assert config.confidence == 0.18
+    assert config.image_size == 960
     assert config.finish_line_y == 0.90
-    assert config.exit_margin_y == 0.06
-    assert config.max_missing_frames == 8
+    assert config.exit_margin_y == 0.10
+    assert config.max_missing_frames == 15
     assert config.min_track_observations == 3
     assert config.preview_buffer_seconds == 10.0
     assert config.playback_fps == 30.0

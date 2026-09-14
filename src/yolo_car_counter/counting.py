@@ -69,10 +69,18 @@ class TrackState:
             detection.confidence,
             0.01,
         )
-        self.class_name = max(
+        candidate = max(
             self.class_scores,
             key=lambda class_name: (self.class_scores[class_name], class_name),
         )
+        current_score = self.class_scores.get(self.class_name, 0.0)
+        # Keep a stable label through a short occlusion/noisy frame. A new
+        # class must have materially stronger accumulated evidence before it
+        # replaces the label already attached to the trajectory.
+        if candidate == self.class_name or current_score <= 0.0:
+            self.class_name = candidate
+        elif self.class_scores[candidate] >= current_score * 1.15:
+            self.class_name = candidate
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 6.5
+import QtQuick.Layouts 1.15
 
 Button {
     id: control
@@ -8,13 +9,29 @@ Button {
     property string variant: "secondary" // primary, secondary, text, danger
     property bool compact: false
 
-    implicitHeight: compact ? 34 : 38
-    implicitWidth: compact ? 104 : 132
+    implicitHeight: compact ? 36 : 40
+    // The old fixed width was smaller than the text plus horizontal padding.
+    // Measure the label so a layout can never silently ellipsize a primary
+    // action just because the button is used inside a RowLayout.
+    implicitWidth: Math.max(
+        compact ? 112 : 132,
+        Math.ceil(labelMetrics.advanceWidth + leftPadding + rightPadding + 2)
+    )
+    Layout.minimumWidth: implicitWidth
+    Layout.preferredWidth: implicitWidth
     hoverEnabled: true
     padding: 0
-    leftPadding: compact ? 13 : 16
-    rightPadding: compact ? 13 : 16
+    leftPadding: 16
+    rightPadding: 16
     Accessible.name: control.text
+
+    TextMetrics {
+        id: labelMetrics
+        text: control.text
+        font.family: control.theme ? control.theme.sansFont : "Segoe UI"
+        font.pixelSize: control.compact ? 12 : 13
+        font.weight: Font.DemiBold
+    }
 
     contentItem: Text {
         text: control.text
@@ -32,6 +49,7 @@ Button {
         font.family: control.theme.sansFont
         font.pixelSize: control.compact ? 12 : 13
         font.weight: Font.DemiBold
+        wrapMode: Text.NoWrap
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

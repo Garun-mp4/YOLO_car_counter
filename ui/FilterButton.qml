@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 6.5
+import QtQuick.Layouts 1.15
 
 Button {
     id: control
@@ -8,12 +9,25 @@ Button {
     property bool active: false
 
     implicitHeight: 34
-    implicitWidth: 104
+    implicitWidth: Math.max(
+        104,
+        Math.ceil(labelMetrics.advanceWidth + leftPadding + rightPadding + 2)
+    )
+    Layout.minimumWidth: implicitWidth
+    Layout.preferredWidth: implicitWidth
     hoverEnabled: true
     padding: 0
-    leftPadding: 12
-    rightPadding: 12
+    leftPadding: 16
+    rightPadding: 16
     Accessible.name: control.text
+
+    TextMetrics {
+        id: labelMetrics
+        text: control.text
+        font.family: control.theme ? control.theme.sansFont : "Segoe UI"
+        font.pixelSize: 12
+        font.weight: control.active ? Font.DemiBold : Font.Normal
+    }
 
     contentItem: Text {
         text: control.text
@@ -21,6 +35,7 @@ Button {
         font.family: control.theme.sansFont
         font.pixelSize: 12
         font.weight: control.active ? Font.DemiBold : Font.Normal
+        wrapMode: Text.NoWrap
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
